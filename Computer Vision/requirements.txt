@@ -1,0 +1,4 @@
+opencv-python
+numpy
+ultralytics
+# cv_bridge is typically installed via ROS 2 apt packages: sudo apt install ros-<distro>-cv-bridge

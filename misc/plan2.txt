@@ -1,0 +1,33 @@
+Berikut adalah rincian lengkap mengenai apa saja yang Anda perlukan untuk merealisasikannya:
+1. Perangkat Keras (Hardware)
+Raspberry Pi Camera Module (Pi Cam): Kamera Pi Cam (seperti versi V2 atau V3) yang dihubungkan langsung ke port CSI (Camera Serial Interface) pada Raspberry Pi 4B menggunakan kabel ribbon
+.
+Dudukan/Mounting yang Presisi: Sumbu (axis) kamera harus diletakkan sejajar atau memiliki orientasi sumbu yang sama dengan sensor LiDAR Anda
+. Hal ini sangat penting untuk akurasi kalkulasi transformasi koordinat rintangan jika Anda ingin melakukan fusi data (sensor fusion)
+.
+Sistem Catu Daya yang Stabil: Mengalirkan video secara real-time meningkatkan konsumsi daya secara signifikan. Pastikan Raspberry Pi disuplai oleh baterai atau power bank berkualitas dengan output stabil minimal 5V/3A guna mencegah terjadinya penurunan tegangan (voltage drop atau under-voltage) saat motor dan kamera aktif bersamaan
+.
+2. Antarmuka Perangkat Luanak (ROS 2 Software Stack)
+Di dalam sistem operasi Ubuntu dan framework ROS 2 Humble pada Raspberry Pi, Anda memerlukan beberapa paket berikut:
+ROS 2 Camera Driver Node: Node seperti v4l2_camera atau usb_cam untuk menangkap data mentah dari Pi Cam dan memublikasikannya ke topik ROS (biasanya bertipe pesan sensor_msgs/msg/Image dengan nama topik /image_raw)
+.
+Pustaka cv_bridge: Paket wajib di ROS 2 yang bertindak sebagai jembatan untuk mengonversi tipe data gambar ROS (sensor_msgs/Image) menjadi format matriks OpenCV (numpy array di Python atau cv::Mat di C++) agar dapat diolah oleh pustaka Computer Vision
+.
+Pustaka OpenCV & Environment Python: OpenCV diinstal di dalam virtual environment Python 3 khusus (misalnya venv atau conda) untuk mempermudah prapemrosesan citra (seperti deteksi tepi atau manipulasi ukuran gambar) tanpa mengganggu pustaka bawaan sistem ROS 2
+.
+3. Algoritma Deteksi Objek (AI / Object Detection)
+Untuk rover pemandu evakuasi, Computer Vision biasanya diintegrasikan dengan algoritma deteksi objek:
+Model YOLO (You Only Look Once): Algoritma deteksi objek real-time (seperti YOLOv5 atau YOLOv8) sangat ideal untuk mendeteksi rintangan spesifik, manusia (korban), atau tanda keselamatan di dalam gedung
+.
+Penyimpanan Data Koordinat (K-Means/Pickle): Berdasarkan metode dari penelitian sejenis, koordinat posisi objek yang terdeteksi dari kamera perlu dicocokkan dengan koordinat peta SLAM, lalu disimpan (misalnya dalam format file .pickle) untuk divisualisasikan pada peta pemantauan
+.
+4. Arsitektur Komputasi Terdistribusi (Multi-Machine Setup)
+Sangat penting untuk diperhatikan bahwa Raspberry Pi 4B memiliki keterbatasan daya komputasi dan memori (RAM)
+. Menjalankan SLAM Toolbox, Nav2, fusi sensor, serta inferensi deep learning YOLO secara bersamaan secara lokal di satu board Pi 4B akan menyebabkan bottleneck kinerja, kelambatan navigasi, atau bahkan CPU thermal throttling
+.
+Oleh karena itu, sangat disarankan menerapkan arsitektur terdistribusi ROS 2 berikut:
+Raspberry Pi (On-Board Rover): Hanya bertugas mengumpulkan data sensor dan memublikasikan topik video mentah (/image_raw) serta data LiDAR ke jaringan nirkabel
+.
+Ground Station / Laptop Ubuntu: Menghubungkan laptop operator ke jaringan Wi-Fi lokal yang sama dengan Raspberry Pi
+. Laptop Anda (atau SBC dengan akselerator AI seperti Jetson Orin Nano) akan bertindak sebagai penerima topik video tersebut dan menjalankan inferensi komputasi berat (OpenCV + YOLO) secara terpisah (offboard processing)
+.
