@@ -1,0 +1,105 @@
+<?xml version="1.0"?>
+<robot name="arebot" xmlns:xacro="http://www.ros.org/wiki/xacro">
+
+  <!-- Inertial parameter macros -->
+
+  <xacro:macro name="chassis_inertial_params">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <mass value="4.0" />
+    <inertia ixx="0.010609" ixy="0"          ixz="0"
+                            iyy="0.010609"   iyz="0"
+                                             izz="0.05865" />
+  </xacro:macro>
+
+  <xacro:macro name="wheel_inertial_params">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <mass value="0.34055" />
+    <inertia ixx="0.00026046" ixy="0"          ixz="0"
+                              iyy="0.00026046" iyz="0"
+                                               izz="0.00041226" />
+  </xacro:macro>
+
+  <xacro:macro name="caster_inertial_params">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <mass value="0.05" />
+    <inertia ixx="1e-6" ixy="0" ixz="0"
+                        iyy="1e-6" iyz="0"
+                                  izz="1e-6" />
+  </xacro:macro>
+
+  <xacro:macro name="lidar_inertial_params">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <mass value="0.130" />
+    <inertia ixx="4E-06" ixy="0"           ixz="0"
+                         iyy="4E-06"  iyz="0"
+                                      izz="4E-06" />
+  </xacro:macro>
+
+  <xacro:macro name="camera_inertial_params">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <mass value="1e-5" />
+    <inertia ixx="1e-6" ixy="0" ixz="0"
+                        iyy="1e-6" iyz="0"
+                                  izz="1e-6" />
+  </xacro:macro>
+
+  <!-- Geometry macros (primitives, no meshes) -->
+
+  <xacro:macro name="chassis_geometry">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <geometry>
+      <cylinder length="0.20" radius="0.09"/>
+    </geometry>
+  </xacro:macro>
+
+  <xacro:macro name="wheel_geometry">
+    <origin xyz="0 0 0" rpy="1.5708 0 0" />
+    <geometry>
+      <cylinder length="0.04" radius="0.11"/>
+    </geometry>
+  </xacro:macro>
+
+  <xacro:macro name="wheel_collision_geometry">
+    <origin xyz="0 0 0" rpy="1.5708 0 0" />
+    <geometry>
+      <cylinder length="0.04" radius="0.11"/>
+    </geometry>
+  </xacro:macro>
+
+  <xacro:macro name="caster_geometry">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <geometry>
+      <sphere radius="0.025"/>
+    </geometry>
+  </xacro:macro>
+
+  <xacro:macro name="lidar_geometry">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <geometry>
+      <box size="0.08 0.08 0.05"/>
+    </geometry>
+  </xacro:macro>
+
+  <xacro:macro name="camera_geometry">
+    <origin xyz="0 0 0" rpy="0 0 0" />
+    <geometry>
+      <box size="0.03 0.06 0.03"/>
+    </geometry>
+  </xacro:macro>
+
+  <!-- Transmission macros -->
+
+  <xacro:macro name="wheel_transmission" params="name">
+    <transmission name="${name}_transmission">
+      <type>transmission_interface/SimpleTransmission</type>
+      <joint name="${name}_joint">
+        <hardwareInterface>velocity</hardwareInterface>
+      </joint>
+      <actuator name="${name}_motor">
+        <hardwareInterface>velocity</hardwareInterface>
+        <mechanicalReduction>1</mechanicalReduction>
+      </actuator>
+    </transmission>
+  </xacro:macro>
+
+</robot>

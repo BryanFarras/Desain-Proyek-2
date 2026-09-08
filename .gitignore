@@ -1,0 +1,5 @@
+Rover_Sim/build/
+Rover_Sim/install/
+Rover_Sim/log/
+Rover_Sim/.agents/
+Rover_Sim/skills-lock.json

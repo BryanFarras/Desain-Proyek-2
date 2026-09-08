@@ -1,0 +1,31 @@
+beluga_amcl:
+  ros__parameters:
+    global_frame_id: map
+    odom_frame_id: odom
+    base_frame_id: base_footprint
+    scan_topic: /scan
+    map_topic: /map
+    initial_pose_topic: initialpose
+    robot_model_type: differential_drive
+    autostart: true
+    # Sensor model (matches your lidar)
+    laser_model_type: likelihood_field
+    laser_max_range: 10.0
+    laser_min_range: 0.1
+    # Filter update thresholds (responsive)
+    update_min_d: 0.1
+    update_min_a: 0.1
+    # Odometry noise (start defaults)
+    alpha1: 0.2
+    alpha2: 0.2
+    alpha3: 0.2
+    alpha4: 0.2
+    # Particle filter sizing (KLD)
+    min_particles: 500
+    max_particles: 2000
+    resample_interval: 1
+    selectiv_resampling: false
+    # If underpowered, set execution_policy: seq
+    execution_policy: seq
+    transform_tolerance: 5.0   # default 1.0 — gives more time for TF to catch up
+    bond_timeout: 15.0         # default 4.0 — keeps node alive while TF catches up

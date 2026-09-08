@@ -1,0 +1,15 @@
+slam_toolbox:
+  ros__parameters:
+    mode: localization
+    map_file_name: /home/edar/desproRover_ws/maze_map_serialize
+    map_start_pose: [0.0, 0.0, 0.0]
+    scan_topic: /scan
+    odom_frame: odom
+    map_frame: map
+    base_frame: base_footprint
+    use_scan_matching: true
+    do_loop_closing: false
+    transform_publish_period: 0.02
+    minimum_time_interval: 0.1
+    minimum_travel_distance: 0.1
+    minimum_travel_heading: 0.1
