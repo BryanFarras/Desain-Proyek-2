@@ -68,6 +68,7 @@ body { font-family: 'Inter', sans-serif; background: var(--bg-main); color: var(
 .hitl-btn:hover { background: rgba(255,255,255,0.05); }
 .hitl-btn.danger { background: rgba(248, 113, 113, 0.1); border-color: rgba(248, 113, 113, 0.3); color: var(--text-red); }
 .hitl-btn.danger:hover { background: rgba(248, 113, 113, 0.2); }
+.hitl-btn:disabled { opacity: 0.35; cursor: not-allowed; pointer-events: none; }
 
 .sec-row { display:grid; grid-template-columns:1fr 1fr; gap:20px }
 

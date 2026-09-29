@@ -7,10 +7,13 @@ from rclpy.node import Node
 # pyrefly: ignore [missing-import]
 from sensor_msgs.msg import Image
 # pyrefly: ignore [missing-import]
+from std_msgs.msg import String
+# pyrefly: ignore [missing-import]
 from cv_bridge import CvBridge
 # pyrefly: ignore [missing-import]
 import cv2
 import numpy as np
+import json
 
 # Uncomment and install ultralytics for YOLO support
 # from ultralytics import YOLO
@@ -34,8 +37,16 @@ class ObjectDetectionNode(Node):
             10
         )
         self.subscription  # prevent unused variable warning
+
+        # Publisher untuk hasil deteksi — akan dikonsumsi oleh web monitoring via rosbridge
+        self.detection_pub = self.create_publisher(
+            String,
+            '/detection_results',
+            10
+        )
         
         self.get_logger().info('Object Detection Node has been started.')
+        self.get_logger().info('Publishing detection results to /detection_results')
 
     def image_callback(self, msg):
         try:
@@ -45,8 +56,10 @@ class ObjectDetectionNode(Node):
             self.get_logger().error(f'Failed to convert image: {e}')
             return
 
-        # --- YOLO Inference Placeholder ---
+        # --- YOLO Inference ---
+        # Uncomment blok di bawah setelah install ultralytics
         # results = self.model(cv_image)
+        # detections = []
         # 
         # for r in results:
         #     boxes = r.boxes
@@ -55,12 +68,36 @@ class ObjectDetectionNode(Node):
         #         x1, y1, x2, y2 = box.xyxy[0]
         #         x1, y1, x2, y2 = int(x1), int(y1), int(x2), int(y2)
         #         
+        #         # Confidence dan class
+        #         conf = float(box.conf[0])
+        #         cls_id = int(box.cls[0])
+        #         label = self.model.names[cls_id]
+        #         
+        #         detections.append({
+        #             "label": label,
+        #             "confidence": conf,
+        #             "bbox": [x1, y1, x2, y2]
+        #         })
+        #         
         #         # Draw bounding box
         #         cv2.rectangle(cv_image, (x1, y1), (x2, y2), (0, 255, 0), 3)
-        #         
-        #         # Draw label (Placeholder)
-        #         cv2.putText(cv_image, "Object", (x1, y1 - 10), cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        #         cv2.putText(cv_image, f"{label} {conf:.2f}", (x1, y1 - 10),
+        #                     cv2.FONT_HERSHEY_SIMPLEX, 0.9, (0, 255, 0), 2)
+        # 
+        # # Publish hasil deteksi sebagai JSON string ke /detection_results
+        # if detections:
+        #     det_msg = String()
+        #     det_msg.data = json.dumps(detections)
+        #     self.detection_pub.publish(det_msg)
+        #     self.get_logger().debug(f'Published {len(detections)} detections')
         
+        # --- Placeholder: publish dummy detection saat YOLO belum aktif ---
+        # Hapus blok ini setelah YOLO model di-uncomment
+        detections = []
+        det_msg = String()
+        det_msg.data = json.dumps(detections)
+        self.detection_pub.publish(det_msg)
+
         # Display the image for debugging (can be disabled in production)
         cv2.imshow("Rover Camera Feed - YOLO Detection", cv_image)
         cv2.waitKey(1)

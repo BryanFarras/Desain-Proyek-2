@@ -1,4 +1,5 @@
-import { useState, useEffect } from 'react';
+import { useState, useRef, useCallback } from 'react';
+import { Topic } from 'roslib';
 import { 
   IconLayersIntersect, 
   IconRobot, 
@@ -9,7 +10,7 @@ import {
   IconMap, 
   IconCpu, 
   IconRadar, 
-  IconGyroscope, 
+  IconRotate360, 
   IconRipple, 
   IconBroadcast, 
   IconAdjustmentsHorizontal, 
@@ -22,12 +23,14 @@ import {
   IconClock, 
   IconArrowRight, 
   IconUsers, 
-  IconSignal 
+  IconAntenna 
 } from '@tabler/icons-react';
 import RosConnection from './components/RosConnection';
 
 function App() {
+  const rosRef = useRef(null);
   const [rosStatus, setRosStatus] = useState('Disconnected');
+  const [roverMode, setRoverMode] = useState('autonomous'); // 'autonomous' | 'manual'
   const [telemetry, setTelemetry] = useState({
     x: 0.0,
     y: 0.0,
@@ -35,14 +38,17 @@ function App() {
     speed: 0.0,
     area: 0
   });
+  const [detections, setDetections] = useState([]);
   const [logs, setLogs] = useState([]);
 
   const handleRosStatusChange = (status) => {
     setRosStatus(status);
     if (status === 'Connected') {
       addLog('Sistem berhasil terhubung ke ROS Bridge', 'info');
+    } else if (status === 'Error') {
+      addLog('Gagal terhubung ke ROS Bridge', 'err');
     } else {
-      addLog('Terputus dari ROS Bridge', 'err');
+      addLog('Terputus dari ROS Bridge — mencoba reconnect...', 'warn');
     }
   };
 
@@ -50,13 +56,68 @@ function App() {
     setTelemetry(prev => ({ ...prev, ...data }));
   };
 
+  const handleDetectionUpdate = useCallback((data) => {
+    setDetections(data);
+  }, []);
+
   const addLog = (msg, tag = 'info') => {
     const time = new Date().toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
     setLogs(prev => [{ time, msg, tag }, ...prev].slice(0, 50));
   };
 
-  const sendPrompt = (msg) => {
-    addLog(`Operator: ${msg}`, 'info');
+  // --- HITL: Publish perintah ke topik ROS ---
+  const publishToRos = (topicName, msgType, msgData, logMsg) => {
+    if (!rosRef.current || rosStatus !== 'Connected') {
+      addLog('Gagal mengirim — tidak terhubung ke ROS Bridge', 'err');
+      return;
+    }
+    const topic = new Topic({
+      ros: rosRef.current,
+      name: topicName,
+      messageType: msgType
+    });
+    topic.publish(msgData);
+    addLog(logMsg, 'info');
+  };
+
+  const handleTakeOver = () => {
+    publishToRos(
+      '/rover_mode',
+      'std_msgs/msg/String',
+      { data: 'manual' },
+      'Operator: Mengambil alih kendali manual'
+    );
+    setRoverMode('manual');
+  };
+
+  const handleReturnToBase = () => {
+    publishToRos(
+      '/rover_command',
+      'std_msgs/msg/String',
+      { data: 'return_to_base' },
+      'Operator: Perintah kembali ke base dikirim'
+    );
+  };
+
+  const handleEmergencyStop = () => {
+    // Kirim kecepatan nol ke /cmd_vel untuk berhenti segera
+    publishToRos(
+      '/cmd_vel',
+      'geometry_msgs/msg/Twist',
+      {
+        linear: { x: 0.0, y: 0.0, z: 0.0 },
+        angular: { x: 0.0, y: 0.0, z: 0.0 }
+      },
+      'EMERGENCY STOP — rover dihentikan!'
+    );
+    // Juga kirim perintah mode stop
+    publishToRos(
+      '/rover_command',
+      'std_msgs/msg/String',
+      { data: 'emergency_stop' },
+      'Sinyal emergency stop dikirim ke rover'
+    );
+    setRoverMode('autonomous');
   };
 
   return (
@@ -64,6 +125,8 @@ function App() {
       <RosConnection 
         onStatusChange={handleRosStatusChange} 
         onTelemetryUpdate={handleTelemetryUpdate}
+        onDetectionUpdate={handleDetectionUpdate}
+        rosRef={rosRef}
       />
 
       <div className="topbar">
@@ -72,7 +135,7 @@ function App() {
           Autonomous Evacuation Rover — Web Dashboard
         </div>
         <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-          <span className="mode-badge"><IconRobot size={16} /> Mode: Evakuasi Aktif</span>
+          <span className="mode-badge"><IconRobot size={16} /> Mode: {roverMode === 'manual' ? 'Manual (HITL)' : 'Evakuasi Aktif'}</span>
           <span className={`badge ${rosStatus === 'Connected' ? 'badge-ok' : 'badge-err'}`}>
             <div className={`dot ${rosStatus !== 'Connected' ? 'disconnected' : ''}`}></div>
             {rosStatus}
@@ -156,7 +219,7 @@ function App() {
                 <span className={`badge ${rosStatus === 'Connected' ? 'badge-ok' : 'badge-err'}`}>{rosStatus === 'Connected' ? 'Aktif' : 'Mati'}</span>
               </div>
               <div className="srow">
-                <div className="sname"><IconGyroscope size={16} color="var(--text-yellow)" /> IMU MPU-6050</div>
+                <div className="sname"><IconRotate360 size={16} color="var(--text-yellow)" /> IMU MPU-6050</div>
                 <span className={`badge ${rosStatus === 'Connected' ? 'badge-ok' : 'badge-err'}`}>{rosStatus === 'Connected' ? 'Aktif' : 'Mati'}</span>
               </div>
               <div className="srow">
@@ -174,18 +237,28 @@ function App() {
             <div className="card-title"><IconAdjustmentsHorizontal size={20} /> Kontrol HITL</div>
             <div style={{ fontSize: '12px', color: 'var(--text-muted)', marginBottom: '12px', fontWeight: '500' }}>Human in the Loop — kendali operator</div>
             <div className="hitl-row">
-              <button className="hitl-btn" onClick={() => sendPrompt('Ambil alih kendali manual')}>
+              <button className="hitl-btn" onClick={handleTakeOver} disabled={rosStatus !== 'Connected'}>
                 <IconSteeringWheel size={16} /> Ambil alih
               </button>
-              <button className="hitl-btn" onClick={() => sendPrompt('Kembali ke base')}>
+              <button className="hitl-btn" onClick={handleReturnToBase} disabled={rosStatus !== 'Connected'}>
                 <IconHome size={16} /> Kembali ke base
               </button>
             </div>
             <div className="hitl-row">
-              <button className="hitl-btn danger" onClick={() => sendPrompt('EMERGENCY STOP TRIGGERED!')}>
+              <button className="hitl-btn danger" onClick={handleEmergencyStop} disabled={rosStatus !== 'Connected'}>
                 <IconPlayerStop size={16} /> Emergency stop
               </button>
             </div>
+            {detections.length > 0 && (
+              <div style={{ marginTop: '12px', padding: '8px', borderRadius: '8px', background: 'rgba(56,178,89,0.06)', border: '1px solid rgba(56,178,89,0.15)' }}>
+                <div style={{ fontSize: '11px', fontWeight: '600', color: 'var(--text-muted)', marginBottom: '6px' }}>Objek terdeteksi (CV)</div>
+                {detections.map((det, i) => (
+                  <div key={i} style={{ fontSize: '12px', color: 'var(--text-main)', padding: '2px 0', fontWeight: '500' }}>
+                    {det.label} — {(det.confidence * 100).toFixed(0)}%
+                  </div>
+                ))}
+              </div>
+            )}
           </div>
         </div>
       </div>
@@ -229,7 +302,7 @@ function App() {
               <div className="pill-val">~3 menit</div>
             </div>
             <div className="stat-pill">
-              <IconSignal size={18} color="var(--accent-blue)" />
+              <IconAntenna size={18} color="var(--accent-blue)" />
               <div><div className="pill-label">Latensi WebSocket</div></div>
               <div className="pill-val">{rosStatus === 'Connected' ? '12 ms' : '-'}</div>
             </div>
