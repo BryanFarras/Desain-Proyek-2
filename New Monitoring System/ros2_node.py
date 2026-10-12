@@ -1,28 +1,39 @@
-import rclpy
-from rclpy.node import Node
-from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
-from threading import Thread, Lock
 import time
 import json
+from threading import Lock
 
-# ROS 2 Message Types
-from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped
-from nav_msgs.msg import Odometry, Path, Map
-from sensor_msgs.msg import LaserScan, BatteryState, Imu
-from std_msgs.msg import String, Bool, Float32
-from slam_toolbox.msg import SerializePoseGraph
+# ROS 2 imports with safety guards
+try:
+    import rclpy
+    from rclpy.node import Node
+    from rclpy.qos import QoSProfile, QoSReliabilityPolicy, QoSHistoryPolicy
+    from geometry_msgs.msg import Twist, PoseStamped
+    from nav_msgs.msg import Odometry, Path
+    try:
+        from nav_msgs.msg import OccupancyGrid as MapMsg
+    except ImportError:
+        try:
+            from nav_msgs.msg import Map as MapMsg
+        except ImportError:
+            MapMsg = None
+    from sensor_msgs.msg import LaserScan, BatteryState, Imu
+    from std_msgs.msg import String, Bool
+    ROS2_IMPORTS_OK = True
+except ImportError:
+    ROS2_IMPORTS_OK = False
+    Node = object
 
-# Custom message types (if any)
-# from aer_msgs.msg import RoverStatus, MissionState
 
-
-class RoverROS2Node(Node):
+class RoverROS2Node(Node if ROS2_IMPORTS_OK else object):
     """
     ROS 2 Node for Autonomous Evacuation Rover
     Handles communication with SLAM, navigation, and sensor nodes
     """
 
     def __init__(self, shared_state):
+        if not ROS2_IMPORTS_OK:
+            raise RuntimeError("ROS 2 (rclpy) is not available in the current environment")
+
         super().__init__('aer_dashboard_node')
 
         self.shared_state = shared_state
@@ -68,12 +79,13 @@ class RoverROS2Node(Node):
         )
 
         # Map (from SLAM)
-        self.map_sub = self.create_subscription(
-            Map,
-            '/map',
-            self.map_callback,
-            reliable_qos
-        )
+        if MapMsg is not None:
+            self.map_sub = self.create_subscription(
+                MapMsg,
+                '/map',
+                self.map_callback,
+                reliable_qos
+            )
 
         # Battery status
         self.battery_sub = self.create_subscription(
@@ -107,6 +119,22 @@ class RoverROS2Node(Node):
             reliable_qos
         )
 
+        # CV Detection results (from YOLO node)
+        self.det_sub = self.create_subscription(
+            String,
+            '/detection_results',
+            self.detections_callback,
+            sensor_qos
+        )
+
+        # Rover mode feedback
+        self.mode_sub = self.create_subscription(
+            String,
+            '/rover_mode',
+            self.mode_callback,
+            reliable_qos
+        )
+
         # ==================== PUBLISHERS ====================
 
         # Velocity command (for manual control)
@@ -130,10 +158,16 @@ class RoverROS2Node(Node):
             reliable_qos
         )
 
+        # Rover mode command
+        self.mode_pub = self.create_publisher(
+            String,
+            '/rover_mode',
+            reliable_qos
+        )
+
         # ==================== STATE INITIALIZATION ====================
 
         self._init_state()
-
         self.get_logger().info('AER Dashboard ROS 2 Node initialized')
 
     def _init_state(self):
@@ -164,10 +198,12 @@ class RoverROS2Node(Node):
                 'slam_active': False,
                 'map_received': False,
                 'localization_ok': False,
+                'area': 0.0,
 
                 # Sensors
                 'min_obstacle_distance': float('inf'),
                 'imu_ok': True,
+                'lidar_ok': False,
 
                 # Navigation
                 'navigation_active': False,
@@ -177,6 +213,7 @@ class RoverROS2Node(Node):
                 # Mission
                 'mission_state': 'IDLE',
                 'mission_progress': 0.0,
+                'detections': [],
 
                 # Timestamps
                 'last_pose_update': 0.0,
@@ -206,27 +243,31 @@ class RoverROS2Node(Node):
         with self.state_lock:
             self.shared_state['linear_vel'] = msg.twist.twist.linear.x
             self.shared_state['angular_vel'] = msg.twist.twist.angular.z
+            if 'x' not in self.shared_state or not self.shared_state.get('localization_ok'):
+                self.shared_state['x'] = msg.pose.pose.position.x
+                self.shared_state['y'] = msg.pose.pose.position.y
 
     def scan_callback(self, msg: LaserScan):
         """Handle laser scan data for obstacle detection"""
         with self.state_lock:
-            # Find minimum distance (closest obstacle)
             valid_ranges = [r for r in msg.ranges if msg.range_min < r < msg.range_max]
             if valid_ranges:
                 self.shared_state['min_obstacle_distance'] = min(valid_ranges)
+            self.shared_state['lidar_ok'] = True
             self.shared_state['last_scan_update'] = time.time()
 
-    def map_callback(self, msg: Map):
+    def map_callback(self, msg):
         """Handle map updates from SLAM"""
         with self.state_lock:
             self.shared_state['map_received'] = True
             self.shared_state['slam_active'] = True
             self.shared_state['last_map_update'] = time.time()
-
-            # Store map metadata
-            self.shared_state['map_width'] = msg.info.width
-            self.shared_state['map_height'] = msg.info.height
-            self.shared_state['map_resolution'] = msg.info.resolution
+            if hasattr(msg, 'info'):
+                self.shared_state['map_width'] = msg.info.width
+                self.shared_state['map_height'] = msg.info.height
+                self.shared_state['map_resolution'] = msg.info.resolution
+                # Estimate mapped area
+                self.shared_state['area'] = round(msg.info.width * msg.info.height * (msg.info.resolution ** 2), 1)
 
     def battery_callback(self, msg: BatteryState):
         """Handle battery status updates"""
@@ -243,8 +284,6 @@ class RoverROS2Node(Node):
         """Handle navigation path updates"""
         with self.state_lock:
             self.shared_state['navigation_active'] = len(msg.poses) > 0
-
-            # Calculate path length
             if len(msg.poses) > 1:
                 total_length = 0.0
                 for i in range(len(msg.poses) - 1):
@@ -264,6 +303,21 @@ class RoverROS2Node(Node):
             except json.JSONDecodeError:
                 self.shared_state['mission_state'] = msg.data
 
+    def detections_callback(self, msg: String):
+        """Handle CV obstacle detections"""
+        with self.state_lock:
+            try:
+                dets = json.loads(msg.data)
+                if isinstance(dets, list):
+                    self.shared_state['detections'] = dets
+            except Exception:
+                pass
+
+    def mode_callback(self, msg: String):
+        """Handle mode updates"""
+        with self.state_lock:
+            self.shared_state['mode'] = msg.data.upper()
+
     # ==================== COMMAND METHODS ====================
 
     def send_velocity_command(self, linear_x=0.0, angular_z=0.0):
@@ -279,14 +333,11 @@ class RoverROS2Node(Node):
         msg = Bool()
         msg.data = True
         self.estop_pub.publish(msg)
-
-        # Also send zero velocity
         self.send_velocity_command(0.0, 0.0)
-
         self.get_logger().warn('EMERGENCY STOP ACTIVATED')
 
     def send_mission_command(self, command: str):
-        """Send mission command (start, pause, resume, abort)"""
+        """Send mission command (start, pause, resume, abort, return_to_base)"""
         msg = String()
         msg.data = command
         self.mission_cmd_pub.publish(msg)
@@ -296,6 +347,9 @@ class RoverROS2Node(Node):
         """Set robot operating mode"""
         with self.state_lock:
             self.shared_state['mode'] = mode
+        msg = String()
+        msg.data = mode
+        self.mode_pub.publish(msg)
         self.get_logger().info(f'Mode changed to: {mode}')
 
     # ==================== UTILITY METHODS ====================
@@ -305,8 +359,7 @@ class RoverROS2Node(Node):
         import math
         siny_cosp = 2.0 * (w * z + x * y)
         cosy_cosp = 1.0 - 2.0 * (y * y + z * z)
-        yaw = math.atan2(siny_cosp, cosy_cosp)
-        return yaw
+        return math.atan2(siny_cosp, cosy_cosp)
 
     def get_state(self):
         """Get current robot state (thread-safe)"""
@@ -316,18 +369,16 @@ class RoverROS2Node(Node):
     def shutdown(self):
         """Clean shutdown"""
         self.get_logger().info('Shutting down ROS 2 node...')
-        self.send_velocity_command(0.0, 0.0)  # Ensure robot stops
+        self.send_velocity_command(0.0, 0.0)
         self.destroy_node()
 
 
 def run_ros2_node(shared_state):
-    """
-    Run ROS 2 node in a separate thread
-    This allows Flask to run concurrently with ROS 2 communication
-    """
+    """Run ROS 2 node in a separate thread"""
+    if not ROS2_IMPORTS_OK:
+        return
     rclpy.init()
     node = RoverROS2Node(shared_state)
-
     try:
         rclpy.spin(node)
     except KeyboardInterrupt:
@@ -335,9 +386,3 @@ def run_ros2_node(shared_state):
     finally:
         node.shutdown()
         rclpy.shutdown()
-
-
-if __name__ == '__main__':
-    # Test standalone
-    shared_state = {}
-    run_ros2_node(shared_state)

@@ -2,40 +2,34 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=320, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>AER Dashboard - Autonomous Evacuation Rover</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
 </head>
 <body>
     <div class="app">
-        <!-- ====== PAGE: CAMERA (Full Screen) ====== -->
+        <!-- ====== PAGE 1: CAMERA (Full Screen) ====== -->
         <section class="page active" id="page-camera">
-            <!-- Camera Feed (fills entire page) -->
             <div class="camera-fullscreen">
-                {% if camera_available %}
-                <img id="cameraStream" src="/video_feed" alt="Camera Feed" class="camera-stream">
-                {% else %}
-                <div class="camera-placeholder">
-                    <div class="placeholder-icon">📷</div>
-                    <p class="placeholder-title">No Camera Signal</p>
-                    <p class="placeholder-sub">picamera2 not detected</p>
-                    <p class="placeholder-sub">Endpoint: <code>/video_feed</code></p>
-                </div>
-                {% endif %}
+                <img id="cameraStream" src="/video_feed" alt="Rover Camera Feed" class="camera-stream">
             </div>
 
-            <!-- Overlay: Top-Left (Status) -->
+            <!-- Overlay: Top-Left (Status chips) -->
             <div class="overlay-top-left">
                 <div class="overlay-chip">
                     <span class="chip-dot" id="modeDot"></span>
                     <span id="modeLabel">STANDBY</span>
                 </div>
                 <div class="overlay-chip">
-                    <span>BAT</span>
-                    <span id="batteryValue">85%</span>
+                    <span>⚡ BAT</span>
+                    <span id="batteryValue">92%</span>
+                </div>
+                <div class="overlay-chip chip-hardware" id="hwChip">
+                    <span class="chip-dot-hw" id="hwDot"></span>
+                    <span id="hwLabel">ESP32: DETECTING</span>
                 </div>
             </div>
 
@@ -45,83 +39,242 @@
                 <span class="overlay-clock" id="clock">--:--:--</span>
             </div>
 
-            <!-- Overlay: Bottom-Right (Camera Controls - compact) -->
+            <!-- Overlay: Top-Center (CV Detection Alert) -->
+            <div class="overlay-top-center" id="cvDetectionBadge">
+                <span class="det-icon">🎯</span>
+                <span id="cvDetText">Scanning Objects...</span>
+            </div>
+
+            <!-- Overlay: Bottom-Right (Camera Controls) -->
             <div class="overlay-bottom-right">
-                <button class="overlay-btn" id="btnScreenshot" title="Capture">CAP</button>
-                <button class="overlay-btn" id="btnFullscreen" title="Fullscreen">FS</button>
+                <button class="overlay-btn" id="btnScreenshot" title="Capture Snapshot">CAP</button>
+                <button class="overlay-btn" id="btnFullscreen" title="Toggle Fullscreen">FS</button>
             </div>
         </section>
 
-        <!-- ====== PAGE: CONTROL ====== -->
+        <!-- ====== PAGE 2: CONTROL ====== -->
         <section class="page" id="page-control">
             <div class="page-header">
-                <h2>Control</h2>
+                <h2>Rover Control & Hardware</h2>
+                <span class="header-status" id="headerModeBadge">STANDBY</span>
             </div>
             <div class="page-body">
-                <div class="control-block">
-                    <h3 class="block-title">Movement</h3>
-                    <div class="btn-row">
-                        <button class="btn btn-primary" id="btnStart">Start</button>
-                        <button class="btn btn-warning" id="btnPause">Pause</button>
+                <!-- Hardware Link Section -->
+                <div class="control-block hardware-box">
+                    <div class="hw-header">
+                        <span class="block-title">🔌 Hardware Serial Link (ESP32)</span>
+                        <span class="hw-badge" id="hwStatusBadge">Disconnected</span>
+                    </div>
+                    <div class="hw-controls">
+                        <select id="serialPortSelect" class="hw-select">
+                            <option value="">Auto-Detect Port...</option>
+                        </select>
+                        <button class="btn btn-ghost btn-sm" id="btnRefreshPorts" title="Scan Ports">Scan</button>
+                        <button class="btn btn-primary btn-sm" id="btnToggleSerial">Connect</button>
+                    </div>
+                    <div class="hw-info-sub">
+                        <span>Baud: 115200 | TB6612FNG Controller</span>
+                        <span id="lastSerialMsg">Standby</span>
                     </div>
                 </div>
 
+                <!-- Mission Movement -->
                 <div class="control-block">
-                    <div class="control-block joystick-block" id="joystickBlock" style="display: none;">
-                    <h3 class="block-title">Manual Control</h3>
+                    <h3 class="block-title">Mission Execution</h3>
+                    <div class="btn-row">
+                        <button class="btn btn-primary" id="btnStart">▶ Start Mission</button>
+                        <button class="btn btn-warning" id="btnPause">⏸ Pause</button>
+                        <button class="btn btn-ghost" id="btnReturnBase">🏠 Return to Base</button>
+                    </div>
+                </div>
+
+                <!-- Operating Mode Selector -->
+                <div class="control-block">
+                    <h3 class="block-title">Operating Mode</h3>
+                    <div class="mode-grid">
+                        <button class="mode-btn active" data-mode="STANDBY">STANDBY</button>
+                        <button class="mode-btn" data-mode="PATROL">PATROL</button>
+                        <button class="mode-btn" data-mode="EVACUATION">EVACUATION</button>
+                        <button class="mode-btn" data-mode="MANUAL">MANUAL (HITL)</button>
+                    </div>
+                </div>
+
+                <!-- Virtual Joystick (Active in MANUAL mode) -->
+                <div class="control-block joystick-block" id="joystickBlock">
+                    <h3 class="block-title">Manual Driving (Virtual Joystick & Keys)</h3>
                     <div class="joystick-container">
                         <canvas id="joystickCanvas" width="200" height="200"></canvas>
                         <div class="joystick-info">
                             <div class="velocity-display">
-                                <span class="vel-label">Linear:</span>
+                                <span class="vel-label">Linear X:</span>
                                 <span class="vel-value" id="linearVel">0.00</span>
                                 <span class="vel-unit">m/s</span>
                             </div>
                             <div class="velocity-display">
-                                <span class="vel-label">Angular:</span>
+                                <span class="vel-label">Angular Z:</span>
                                 <span class="vel-value" id="angularVel">0.00</span>
                                 <span class="vel-unit">rad/s</span>
                             </div>
                         </div>
                     </div>
+                    <!-- Keyboard Controls Guide -->
+                    <div class="key-guide">
+                        <span><b>W/S</b>: Maju/Mundur</span>
+                        <span><b>A/D</b>: Belok Kiri/Kanan</span>
+                        <span><b>Q/E</b>: Putar Ditempat</span>
+                        <span><b>Spasi</b>: Coast</span>
+                        <span><b>B</b>: Rem</span>
+                    </div>
                     <div class="joystick-controls">
-                        <button class="btn btn-ghost btn-sm" id="btnStopMovement">Stop</button>
+                        <button class="btn btn-ghost btn-sm" id="btnStopMovement">Coast Stop [Spasi]</button>
+                        <button class="btn btn-ghost btn-sm" id="btnBrakeMovement">Brake [B]</button>
                         <button class="btn btn-ghost btn-sm" id="btnResetJoystick">Reset</button>
                     </div>
                 </div>
-                    <h3 class="block-title">Mode</h3>
-                    <div class="mode-grid">
-                        <button class="mode-btn active" data-mode="STANDBY">STBY</button>
-                        <button class="mode-btn" data-mode="PATROL">PTR</button>
-                        <button class="mode-btn" data-mode="EVACUATION">EVAC</button>
-                        <button class="mode-btn" data-mode="MANUAL">MAN</button>
-                    </div>
-                </div>
 
+                <!-- Emergency Stop -->
                 <div class="control-block emergency-block">
-                    <button class="btn btn-emergency" id="btnEmergency">EMERGENCY STOP</button>
+                    <button class="btn btn-emergency" id="btnEmergency">🚨 EMERGENCY STOP</button>
                 </div>
             </div>
         </section>
 
-        <!-- ====== PAGE: COMMANDS ====== -->
-        <section class="page" id="page-commands">
+        <!-- ====== PAGE 3: TELEMETRY & SLAM (Old Monitoring Merged) ====== -->
+        <section class="page" id="page-telemetry">
             <div class="page-header">
-                <h2>Commands</h2>
+                <h2>Telemetry & SLAM Arena</h2>
+                <span class="sub-pill" id="slamStatusPill">SLAM Active</span>
             </div>
             <div class="page-body">
-                <button class="btn btn-add" id="btnAddCommand">+ Add Command</button>
+                <!-- 4 Telemetry Metrics Cards -->
+                <div class="telemetry-grid4">
+                    <div class="tcard">
+                        <div class="tcard-label">📍 Posisi (X, Y)</div>
+                        <div class="tcard-val" id="telemetryCoords">2.4, 4.8</div>
+                        <div class="tcard-sub">meter dari base origin</div>
+                    </div>
+                    <div class="tcard">
+                        <div class="tcard-label">🔋 Baterai Rover</div>
+                        <div class="tcard-val" id="telemetryBattery">92%</div>
+                        <div class="batt-bar-track">
+                            <div class="batt-bar-fill" id="telemetryBattBar" style="width: 92%;"></div>
+                        </div>
+                    </div>
+                    <div class="tcard">
+                        <div class="tcard-label">🏎 Kecepatan</div>
+                        <div class="tcard-val" id="telemetrySpeed">0.00 m/s</div>
+                        <div class="tcard-sub">target: 0.50 m/s</div>
+                    </div>
+                    <div class="tcard">
+                        <div class="tcard-label">🗺 Area Terpetakan</div>
+                        <div class="tcard-val" id="telemetryArea">148.0 m²</div>
+                        <div class="tcard-sub">dari 500 m² target</div>
+                    </div>
+                </div>
+
+                <!-- Real-Time SLAM Map Canvas -->
+                <div class="slam-map-container">
+                    <div class="slam-map-header">
+                        <h3>Peta Arena SLAM Real-Time</h3>
+                        <span class="map-tag">2D Grid Coordinate Space</span>
+                    </div>
+                    <div class="map-canvas-wrap">
+                        <canvas id="slamCanvas" width="480" height="280"></canvas>
+                    </div>
+                    <div class="map-legend">
+                        <span class="leg-item"><span class="leg-dot dot-rover"></span> Rover (Heading)</span>
+                        <span class="leg-item"><span class="leg-dot dot-exit"></span> EXIT Point</span>
+                        <span class="leg-item"><span class="leg-dot dot-obs"></span> Rintangan Terdeteksi</span>
+                        <span class="leg-item"><span class="leg-dot dot-path"></span> Jalur A*</span>
+                    </div>
+                </div>
+
+                <!-- Hardware Sensor Health Grid -->
+                <div class="sensors-box">
+                    <h3 class="block-title">Status Sensor & Hardware</h3>
+                    <div class="sensors-grid">
+                        <div class="sensor-chip">
+                            <span class="s-name">📡 LiDAR 360°</span>
+                            <span class="s-status ok" id="sLidar">Aktif</span>
+                        </div>
+                        <div class="sensor-chip">
+                            <span class="s-name">🧭 IMU MPU-6050</span>
+                            <span class="s-status ok" id="sImu">Aktif</span>
+                        </div>
+                        <div class="sensor-chip">
+                            <span class="s-name">〰 Sensor Getaran</span>
+                            <span class="s-status ok" id="sVib">Normal</span>
+                        </div>
+                        <div class="sensor-chip">
+                            <span class="s-name">📶 WiFi / Link</span>
+                            <span class="s-status ok" id="sWifi">Terhubung</span>
+                        </div>
+                        <div class="sensor-chip">
+                            <span class="s-name">⚙ Motor ESP32</span>
+                            <span class="s-status" id="sSerial">Standby</span>
+                        </div>
+                        <div class="sensor-chip">
+                            <span class="s-name">📷 Kamera Vision</span>
+                            <span class="s-status ok" id="sCam">Aktif</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- CV Obstacle Detections List -->
+                <div class="cv-detections-box">
+                    <h3 class="block-title">Objek Terdeteksi (Computer Vision)</h3>
+                    <div class="cv-list" id="cvListContainer">
+                        <div class="cv-item">
+                            <span class="cv-tag">Orang</span>
+                            <span class="cv-conf">89% confidence</span>
+                            <span class="cv-sector sector-center">TENGAH</span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Mission Performance Metrics -->
+                <div class="perf-box">
+                    <h3 class="block-title">Metrik Performa Evakuasi</h3>
+                    <div class="perf-grid">
+                        <div class="perf-card">
+                            <span class="p-label">Akurasi SLAM (RMSE)</span>
+                            <span class="p-val">±3.8 cm</span>
+                        </div>
+                        <div class="perf-card">
+                            <span class="p-label">Waktu Replanning</span>
+                            <span class="p-val" id="pReplanning">1.2 detik</span>
+                        </div>
+                        <div class="perf-card">
+                            <span class="p-label">Jarak ke EXIT</span>
+                            <span class="p-val" id="pDistExit">10.2 m</span>
+                        </div>
+                        <div class="perf-card">
+                            <span class="p-label">Estimasi Evakuasi</span>
+                            <span class="p-val" id="pEvacEst">~2.8 menit</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- ====== PAGE 4: COMMANDS ====== -->
+        <section class="page" id="page-commands">
+            <div class="page-header">
+                <h2>Diagnostics & Commands</h2>
+                <button class="btn btn-primary btn-xs" id="btnAddCommand">+ Add Command</button>
+            </div>
+            <div class="page-body">
                 <div class="command-grid" id="commandGrid">
                     <!-- Dynamically rendered -->
                 </div>
             </div>
         </section>
 
-        <!-- ====== PAGE: LOGS ====== -->
+        <!-- ====== PAGE 5: LOGS ====== -->
         <section class="page" id="page-logs">
             <div class="page-header">
-                <h2>System Log</h2>
-                <button class="btn btn-ghost btn-xs" id="btnClearLog">Clear</button>
+                <h2>System Log Stream</h2>
+                <button class="btn btn-ghost btn-xs" id="btnClearLog">Clear Log</button>
             </div>
             <div class="page-body log-page-body">
                 <div class="log-body" id="logBody"></div>
@@ -137,6 +290,10 @@
             <button class="nav-btn" data-page="control">
                 <span class="nav-icon">⌘</span>
                 <span class="nav-label">Control</span>
+            </button>
+            <button class="nav-btn" data-page="telemetry">
+                <span class="nav-icon">☩</span>
+                <span class="nav-label">Telemetry</span>
             </button>
             <button class="nav-btn" data-page="commands">
                 <span class="nav-icon">▤</span>
@@ -169,7 +326,7 @@
                 <div class="form-group">
                     <label for="cmdCommand">Command to Execute</label>
                     <input type="text" id="cmdCommand" placeholder="e.g., ros2 topic list" required>
-                    <small>Full command with arguments</small>
+                    <small>Full command string</small>
                 </div>
                 <div class="modal-actions">
                     <button type="button" class="btn btn-ghost" id="btnCancelAdd">Cancel</button>
