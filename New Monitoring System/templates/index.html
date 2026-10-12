@@ -1,0 +1,184 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=320, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AER Dashboard - Autonomous Evacuation Rover</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <div class="app">
+        <!-- ====== PAGE: CAMERA (Full Screen) ====== -->
+        <section class="page active" id="page-camera">
+            <!-- Camera Feed (fills entire page) -->
+            <div class="camera-fullscreen">
+                {% if camera_available %}
+                <img id="cameraStream" src="/video_feed" alt="Camera Feed" class="camera-stream">
+                {% else %}
+                <div class="camera-placeholder">
+                    <div class="placeholder-icon">📷</div>
+                    <p class="placeholder-title">No Camera Signal</p>
+                    <p class="placeholder-sub">picamera2 not detected</p>
+                    <p class="placeholder-sub">Endpoint: <code>/video_feed</code></p>
+                </div>
+                {% endif %}
+            </div>
+
+            <!-- Overlay: Top-Left (Status) -->
+            <div class="overlay-top-left">
+                <div class="overlay-chip">
+                    <span class="chip-dot" id="modeDot"></span>
+                    <span id="modeLabel">STANDBY</span>
+                </div>
+                <div class="overlay-chip">
+                    <span>BAT</span>
+                    <span id="batteryValue">85%</span>
+                </div>
+            </div>
+
+            <!-- Overlay: Top-Right (LIVE + Clock) -->
+            <div class="overlay-top-right">
+                <span class="badge-live">LIVE</span>
+                <span class="overlay-clock" id="clock">--:--:--</span>
+            </div>
+
+            <!-- Overlay: Bottom-Right (Camera Controls - compact) -->
+            <div class="overlay-bottom-right">
+                <button class="overlay-btn" id="btnScreenshot" title="Capture">CAP</button>
+                <button class="overlay-btn" id="btnFullscreen" title="Fullscreen">FS</button>
+            </div>
+        </section>
+
+        <!-- ====== PAGE: CONTROL ====== -->
+        <section class="page" id="page-control">
+            <div class="page-header">
+                <h2>Control</h2>
+            </div>
+            <div class="page-body">
+                <div class="control-block">
+                    <h3 class="block-title">Movement</h3>
+                    <div class="btn-row">
+                        <button class="btn btn-primary" id="btnStart">Start</button>
+                        <button class="btn btn-warning" id="btnPause">Pause</button>
+                    </div>
+                </div>
+
+                <div class="control-block">
+                    <div class="control-block joystick-block" id="joystickBlock" style="display: none;">
+                    <h3 class="block-title">Manual Control</h3>
+                    <div class="joystick-container">
+                        <canvas id="joystickCanvas" width="200" height="200"></canvas>
+                        <div class="joystick-info">
+                            <div class="velocity-display">
+                                <span class="vel-label">Linear:</span>
+                                <span class="vel-value" id="linearVel">0.00</span>
+                                <span class="vel-unit">m/s</span>
+                            </div>
+                            <div class="velocity-display">
+                                <span class="vel-label">Angular:</span>
+                                <span class="vel-value" id="angularVel">0.00</span>
+                                <span class="vel-unit">rad/s</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="joystick-controls">
+                        <button class="btn btn-ghost btn-sm" id="btnStopMovement">Stop</button>
+                        <button class="btn btn-ghost btn-sm" id="btnResetJoystick">Reset</button>
+                    </div>
+                </div>
+                    <h3 class="block-title">Mode</h3>
+                    <div class="mode-grid">
+                        <button class="mode-btn active" data-mode="STANDBY">STBY</button>
+                        <button class="mode-btn" data-mode="PATROL">PTR</button>
+                        <button class="mode-btn" data-mode="EVACUATION">EVAC</button>
+                        <button class="mode-btn" data-mode="MANUAL">MAN</button>
+                    </div>
+                </div>
+
+                <div class="control-block emergency-block">
+                    <button class="btn btn-emergency" id="btnEmergency">EMERGENCY STOP</button>
+                </div>
+            </div>
+        </section>
+
+        <!-- ====== PAGE: COMMANDS ====== -->
+        <section class="page" id="page-commands">
+            <div class="page-header">
+                <h2>Commands</h2>
+            </div>
+            <div class="page-body">
+                <button class="btn btn-add" id="btnAddCommand">+ Add Command</button>
+                <div class="command-grid" id="commandGrid">
+                    <!-- Dynamically rendered -->
+                </div>
+            </div>
+        </section>
+
+        <!-- ====== PAGE: LOGS ====== -->
+        <section class="page" id="page-logs">
+            <div class="page-header">
+                <h2>System Log</h2>
+                <button class="btn btn-ghost btn-xs" id="btnClearLog">Clear</button>
+            </div>
+            <div class="page-body log-page-body">
+                <div class="log-body" id="logBody"></div>
+            </div>
+        </section>
+
+        <!-- ====== BOTTOM NAVIGATION BAR ====== -->
+        <nav class="bottom-nav">
+            <button class="nav-btn active" data-page="camera">
+                <span class="nav-icon">◉</span>
+                <span class="nav-label">Camera</span>
+            </button>
+            <button class="nav-btn" data-page="control">
+                <span class="nav-icon">⌘</span>
+                <span class="nav-label">Control</span>
+            </button>
+            <button class="nav-btn" data-page="commands">
+                <span class="nav-icon">▤</span>
+                <span class="nav-label">Cmds</span>
+            </button>
+            <button class="nav-btn" data-page="logs">
+                <span class="nav-icon">≡</span>
+                <span class="nav-label">Logs</span>
+            </button>
+        </nav>
+    </div>
+
+    <!-- Modal: Add Command -->
+    <div class="modal-overlay" id="addCommandModal">
+        <div class="modal">
+            <div class="modal-header">
+                <h3>Add New Command</h3>
+                <button class="modal-close" id="btnCloseModal">&times;</button>
+            </div>
+            <form id="addCommandForm" class="modal-body">
+                <div class="form-group">
+                    <label for="cmdLabel">Display Label</label>
+                    <input type="text" id="cmdLabel" placeholder="e.g., Check Battery" required>
+                </div>
+                <div class="form-group">
+                    <label for="cmdId">Command ID</label>
+                    <input type="text" id="cmdId" placeholder="e.g., check_battery" pattern="[a-zA-Z0-9_]+" required>
+                    <small>Alphanumeric and underscore only</small>
+                </div>
+                <div class="form-group">
+                    <label for="cmdCommand">Command to Execute</label>
+                    <input type="text" id="cmdCommand" placeholder="e.g., ros2 topic list" required>
+                    <small>Full command with arguments</small>
+                </div>
+                <div class="modal-actions">
+                    <button type="button" class="btn btn-ghost" id="btnCancelAdd">Cancel</button>
+                    <button type="submit" class="btn btn-primary">Add</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>

@@ -1,0 +1,14 @@
+# Web Framework
+flask>=3.0.0
+
+# Camera (Raspberry Pi)
+picamera2>=0.3.0
+opencv-python>=4.8.0
+numpy>=1.24.0
+
+# ROS 2 Python Client (installed via apt, but listed for reference)
+# Note: Install via: sudo apt install python3-rosdep python3-colcon-common-extensions
+# Then: rosdep install --from-paths . --ignore-src -r -y
+
+# Utilities
+transforms3d>=0.4.0  # For quaternion conversions in ROS 2
