@@ -1,14 +1,15 @@
-# Web Framework
+# Web Framework & API
 flask>=3.0.0
+psutil>=5.9.0
 
-# Camera (Raspberry Pi)
-picamera2>=0.3.0
+# Hardware Serial (ESP32 TB6612FNG)
+pyserial>=3.5
+
+# Camera & Vision
 opencv-python>=4.8.0
 numpy>=1.24.0
+# picamera2>=0.3.0  # Optional on Raspberry Pi OS (biasanya diinstall via apt: python3-picamera2)
 
-# ROS 2 Python Client (installed via apt, but listed for reference)
-# Note: Install via: sudo apt install python3-rosdep python3-colcon-common-extensions
-# Then: rosdep install --from-paths . --ignore-src -r -y
-
-# Utilities
-transforms3d>=0.4.0  # For quaternion conversions in ROS 2
+# ROS 2 & Robotics Utilities
+transforms3d>=0.4.0
+websockets>=12.0
