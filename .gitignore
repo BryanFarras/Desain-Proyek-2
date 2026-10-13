@@ -6,4 +6,5 @@ Rover_Sim/skills-lock.json
 Dataset CV/
 **/__pycache__/
 *.pyc
-runs/
+runs/
+New Monitoring System/.venv/
