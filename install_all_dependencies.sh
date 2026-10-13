@@ -15,7 +15,7 @@ RED='\033[0;31m'
 NC='\033[0m' # No Color
 
 echo -e "${CYAN}================================================================${NC}"
-echo -e "${CYAN}   🚀 AER ROVER - INSTALLASI SEMUA DEPENDENCY (ONE-CLICK)      ${NC}"
+echo -e "${CYAN}   AER ROVER - INSTALLASI SEMUA DEPENDENCY (ONE-CLICK)      ${NC}"
 echo -e "${CYAN}================================================================${NC}"
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
@@ -79,7 +79,7 @@ else
 fi
 
 echo -e "\n${GREEN}================================================================${NC}"
-echo -e "${GREEN}   ✅ SEMUA DEPENDENSI BERHASIL DIINSTALL!                      ${NC}"
+echo -e "${GREEN}   SEMUA DEPENDENSI BERHASIL DIINSTALL!                      ${NC}"
 echo -e "${GREEN}================================================================${NC}"
 echo -e "Untuk mengaktifkan environment di terminal baru, jalankan:"
 echo -e "   ${YELLOW}source ${VENV_DIR}/bin/activate${NC}"

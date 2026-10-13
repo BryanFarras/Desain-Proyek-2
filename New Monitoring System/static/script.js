@@ -843,7 +843,7 @@ function initHitlActions() {
     if (el.btnEmergency) {
         el.btnEmergency.addEventListener('click', () => {
             fetch('/api/emergency_stop', { method: 'POST' });
-            addLog('🚨 EMERGENCY STOP ACTIVATED: Rover stopped immediately!', 'error');
+            addLog('EMERGENCY STOP ACTIVATED: Rover stopped immediately!', 'error');
         });
     }
 

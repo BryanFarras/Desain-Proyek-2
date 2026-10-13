@@ -24,7 +24,7 @@
                     <span id="modeLabel">STANDBY</span>
                 </div>
                 <div class="overlay-chip">
-                    <span>⚡ BAT</span>
+                    <span>BAT</span>
                     <span id="batteryValue">92%</span>
                 </div>
                 <div class="overlay-chip chip-hardware" id="hwChip">
@@ -41,7 +41,7 @@
 
             <!-- Overlay: Top-Center (CV Detection Alert) -->
             <div class="overlay-top-center" id="cvDetectionBadge">
-                <span class="det-icon">🎯</span>
+                <span class="det-icon" aria-hidden="true">•</span>
                 <span id="cvDetText">Scanning Objects...</span>
             </div>
 
@@ -62,7 +62,7 @@
                 <!-- Hardware Link Section -->
                 <div class="control-block hardware-box">
                     <div class="hw-header">
-                        <span class="block-title">🔌 Hardware Serial Link (ESP32)</span>
+                        <span class="block-title">Hardware Serial Link (ESP32)</span>
                         <span class="hw-badge" id="hwStatusBadge">Disconnected</span>
                     </div>
                     <div class="hw-controls">
@@ -82,9 +82,9 @@
                 <div class="control-block">
                     <h3 class="block-title">Mission Execution</h3>
                     <div class="btn-row">
-                        <button class="btn btn-primary" id="btnStart">▶ Start Mission</button>
-                        <button class="btn btn-warning" id="btnPause">⏸ Pause</button>
-                        <button class="btn btn-ghost" id="btnReturnBase">🏠 Return to Base</button>
+                        <button class="btn btn-primary" id="btnStart">Start Mission</button>
+                        <button class="btn btn-warning" id="btnPause">Pause</button>
+                        <button class="btn btn-ghost" id="btnReturnBase">Return to Base</button>
                     </div>
                 </div>
 
@@ -134,7 +134,7 @@
 
                 <!-- Emergency Stop -->
                 <div class="control-block emergency-block">
-                    <button class="btn btn-emergency" id="btnEmergency">🚨 EMERGENCY STOP</button>
+                    <button class="btn btn-emergency" id="btnEmergency">EMERGENCY STOP</button>
                 </div>
             </div>
         </section>
@@ -149,24 +149,24 @@
                 <!-- 4 Telemetry Metrics Cards -->
                 <div class="telemetry-grid4">
                     <div class="tcard">
-                        <div class="tcard-label">📍 Posisi (X, Y)</div>
+                        <div class="tcard-label">Posisi (X, Y)</div>
                         <div class="tcard-val" id="telemetryCoords">2.4, 4.8</div>
                         <div class="tcard-sub">meter dari base origin</div>
                     </div>
                     <div class="tcard">
-                        <div class="tcard-label">🔋 Baterai Rover</div>
+                        <div class="tcard-label">Baterai Rover</div>
                         <div class="tcard-val" id="telemetryBattery">92%</div>
                         <div class="batt-bar-track">
                             <div class="batt-bar-fill" id="telemetryBattBar" style="width: 92%;"></div>
                         </div>
                     </div>
                     <div class="tcard">
-                        <div class="tcard-label">🏎 Kecepatan</div>
+                        <div class="tcard-label">Kecepatan</div>
                         <div class="tcard-val" id="telemetrySpeed">0.00 m/s</div>
                         <div class="tcard-sub">target: 0.50 m/s</div>
                     </div>
                     <div class="tcard">
-                        <div class="tcard-label">🗺 Area Terpetakan</div>
+                        <div class="tcard-label">Area Terpetakan</div>
                         <div class="tcard-val" id="telemetryArea">148.0 m²</div>
                         <div class="tcard-sub">dari 500 m² target</div>
                     </div>
@@ -194,27 +194,27 @@
                     <h3 class="block-title">Status Sensor & Hardware</h3>
                     <div class="sensors-grid">
                         <div class="sensor-chip">
-                            <span class="s-name">📡 LiDAR 360°</span>
+                            <span class="s-name">LiDAR 360°</span>
                             <span class="s-status ok" id="sLidar">Aktif</span>
                         </div>
                         <div class="sensor-chip">
-                            <span class="s-name">🧭 IMU MPU-6050</span>
+                            <span class="s-name">IMU MPU-6050</span>
                             <span class="s-status ok" id="sImu">Aktif</span>
                         </div>
                         <div class="sensor-chip">
-                            <span class="s-name">〰 Sensor Getaran</span>
+                            <span class="s-name">Sensor Getaran</span>
                             <span class="s-status ok" id="sVib">Normal</span>
                         </div>
                         <div class="sensor-chip">
-                            <span class="s-name">📶 WiFi / Link</span>
+                            <span class="s-name">WiFi / Link</span>
                             <span class="s-status ok" id="sWifi">Terhubung</span>
                         </div>
                         <div class="sensor-chip">
-                            <span class="s-name">⚙ Motor ESP32</span>
+                            <span class="s-name">Motor ESP32</span>
                             <span class="s-status" id="sSerial">Standby</span>
                         </div>
                         <div class="sensor-chip">
-                            <span class="s-name">📷 Kamera Vision</span>
+                            <span class="s-name">Kamera Vision</span>
                             <span class="s-status ok" id="sCam">Aktif</span>
                         </div>
                     </div>
@@ -292,7 +292,7 @@
                 <span class="nav-label">Control</span>
             </button>
             <button class="nav-btn" data-page="telemetry">
-                <span class="nav-icon">☩</span>
+                <span class="nav-icon">▦</span>
                 <span class="nav-label">Telemetry</span>
             </button>
             <button class="nav-btn" data-page="commands">

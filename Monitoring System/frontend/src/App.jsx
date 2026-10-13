@@ -1,30 +1,6 @@
 import { useState, useRef, useCallback } from 'react';
 import { Topic } from 'roslib';
-import { 
-  IconLayersIntersect, 
-  IconRobot, 
-  IconMapPin, 
-  IconBattery2, 
-  IconGauge, 
-  IconRoute, 
-  IconMap, 
-  IconCpu, 
-  IconRadar, 
-  IconRotate360, 
-  IconRipple, 
-  IconBroadcast, 
-  IconAdjustmentsHorizontal, 
-  IconSteeringWheel, 
-  IconHome, 
-  IconPlayerStop, 
-  IconList, 
-  IconChartBar, 
-  IconCrosshair, 
-  IconClock, 
-  IconArrowRight, 
-  IconUsers, 
-  IconAntenna 
-} from '@tabler/icons-react';
+
 import RosConnection from './components/RosConnection';
 
 function App() {
