@@ -840,3 +840,151 @@ html, body {
 .form-group small { display: block; margin-top: 3px; font-size: 8px; color: var(--text-muted); }
 .modal-actions { display: flex; gap: 8px; margin-top: 14px; }
 .modal-actions .btn { flex: 1; }
+
+@media (max-width: 360px) {
+    .app {
+        height: 100vh;
+        height: 100dvh;
+    }
+
+    .page-header {
+        gap: 6px;
+        padding: 8px 10px;
+    }
+
+    .page-header h2 {
+        min-width: 0;
+        font-size: 12px;
+    }
+
+    .page-body {
+        min-width: 0;
+        padding: 8px;
+        overscroll-behavior: contain;
+    }
+
+    .bottom-nav {
+        height: 44px;
+        min-height: 44px;
+    }
+
+    .nav-btn {
+        min-width: 0;
+        gap: 1px;
+    }
+
+    .nav-icon { font-size: 14px; }
+    .nav-label { font-size: 7px; letter-spacing: 0.2px; }
+
+    .overlay-top-left {
+        top: 6px;
+        left: 6px;
+        right: 6px;
+        flex-wrap: nowrap;
+        gap: 3px;
+    }
+
+    .overlay-chip {
+        min-width: 0;
+        gap: 4px;
+        padding: 4px 6px;
+        font-size: 8px;
+    }
+
+    .overlay-top-right {
+        top: 38px;
+        right: 6px;
+        gap: 4px;
+    }
+
+    .overlay-clock,
+    .badge-live {
+        padding: 4px 6px;
+        font-size: 8px;
+    }
+
+    .overlay-top-center {
+        top: 68px;
+        left: 6px;
+        right: 6px;
+        width: max-content;
+        max-width: calc(100% - 12px);
+        transform: none;
+        padding: 4px 8px;
+        font-size: 9px;
+    }
+
+    .overlay-bottom-right {
+        right: 6px;
+        bottom: 6px;
+        gap: 4px;
+    }
+
+    .overlay-btn {
+        width: 32px;
+        height: 32px;
+    }
+
+    .hw-header,
+    .hw-info-sub {
+        min-width: 0;
+        gap: 6px;
+    }
+
+    .hw-header .block-title {
+        min-width: 0;
+        overflow-wrap: anywhere;
+    }
+
+    .hw-badge { flex-shrink: 0; }
+
+    .hw-controls { min-width: 0; }
+
+    .hw-select {
+        min-width: 0;
+        padding: 6px;
+        text-overflow: ellipsis;
+    }
+
+    .hw-info-sub span {
+        min-width: 0;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        white-space: nowrap;
+    }
+
+    .btn-row { flex-wrap: wrap; }
+
+    .btn-row > .btn {
+        flex: 1 1 45%;
+        min-width: 0;
+        white-space: normal;
+    }
+
+    .mode-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+    .sensors-grid,
+    .command-grid {
+        grid-template-columns: minmax(0, 1fr);
+    }
+
+    .sensor-chip { min-width: 0; }
+
+    .modal-overlay { padding: 8px; }
+
+    .modal {
+        max-height: calc(100vh - 16px);
+        max-height: calc(100dvh - 16px);
+        display: flex;
+        flex-direction: column;
+        min-height: 0;
+    }
+
+    .modal-header { flex-shrink: 0; }
+
+    .modal-body {
+        min-height: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+}

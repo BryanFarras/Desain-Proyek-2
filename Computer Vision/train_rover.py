@@ -40,7 +40,7 @@ def train_rover_model(
 
     device = "0" if torch.cuda.is_available() else "cpu"
     print("=" * 60)
-    print("🚀 MEMULAI TRAINING MODEL ROVER YOLO")
+    print("MEMULAI TRAINING MODEL ROVER YOLO")
     print("=" * 60)
     print(f"• Dataset Config : {data_path}")
     print(f"• Base Model     : {base_model} (direkomendasikan Nano untuk Raspi)")
@@ -72,7 +72,7 @@ def train_rover_model(
 
     best_weight_path = Path(project_dir) / name / "weights" / "best.pt"
     print("\n" + "=" * 60)
-    print("✅ TRAINING SELESAI!")
+    print("TRAINING SELESAI!")
     print(f"Model bobot terbaik tersimpan di: {best_weight_path}")
     print("=" * 60)
 
@@ -97,7 +97,7 @@ def train_rover_model(
             print("    (Catatan: Anda dapat menginstal dependensi terkait seperti `pip install onnx` atau `pip install tensorflow`)")
 
     print("\n" + "=" * 60)
-    print("🎉 SIAP DEPLOY KE RASPBERRY PI + PI CAM!")
+    print("SIAP DEPLOY KE RASPBERRY PI + PI CAM!")
     print("Langkah selanjutnya:")
     print("1. Salin file model (.pt / .onnx / .tflite) ke Raspberry Pi via SCP:")
     print(f"   scp {best_weight_path} pi@<IP_RASPBERRY_PI>:~/rover_models/")

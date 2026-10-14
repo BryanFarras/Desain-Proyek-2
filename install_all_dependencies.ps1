@@ -5,14 +5,14 @@
 # ==============================================================================
 
 Write-Host "================================================================" -ForegroundColor Cyan
-Write-Host "   🚀 AER ROVER - INSTALLASI SEMUA DEPENDENCY (WINDOWS POWERSHELL) " -ForegroundColor Cyan
+Write-Host "   AER ROVER - INSTALLASI SEMUA DEPENDENCY (WINDOWS POWERSHELL) " -ForegroundColor Cyan
 Write-Host "================================================================" -ForegroundColor Cyan
 
 # 1. Periksa Python
 Write-Host "`n[1/3] Memeriksa instalasi Python..." -ForegroundColor Yellow
 $py = Get-Command python -ErrorAction SilentlyContinue
 if (-not $py) {
-    Write-Host "❌ Error: Python tidak ditemukan di PATH sistem!" -ForegroundColor Red
+    Write-Host "Error: Python tidak ditemukan di PATH sistem!" -ForegroundColor Red
     Write-Host "Silakan download dan install Python 3.10+ dari https://www.python.org/" -ForegroundColor Yellow
     Exit 1
 }
@@ -36,7 +36,7 @@ if (Test-Path $reqPath) {
 }
 
 Write-Host "`n================================================================" -ForegroundColor Green
-Write-Host "   ✅ SEMUA DEPENDENSI BERHASIL DIINSTALL DI WINDOWS!           " -ForegroundColor Green
+Write-Host "   SEMUA DEPENDENSI BERHASIL DIINSTALL DI WINDOWS!           " -ForegroundColor Green
 Write-Host "================================================================" -ForegroundColor Green
 Write-Host "Untuk menjalankan web monitoring langsung:" -ForegroundColor Yellow
 Write-Host "   cd 'New Monitoring System'; python main.py`n" -ForegroundColor White
