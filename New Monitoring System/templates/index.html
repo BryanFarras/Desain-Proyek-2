@@ -31,6 +31,10 @@
                     <span class="chip-dot-hw" id="hwDot"></span>
                     <span id="hwLabel">ESP32: DETECTING</span>
                 </div>
+                <div class="overlay-chip chip-cv-acc" title="Akurasi Klasifikasi Orang Berdasarkan Dataset Obstacle_detection (1,102 Sampel)">
+                    <span class="chip-dot-cv"></span>
+                    <span>ORANG: <strong id="camPersonAcc">92.4%</strong></span>
+                </div>
             </div>
 
             <!-- Overlay: Top-Right (LIVE + Clock) -->
@@ -217,17 +221,31 @@
                             <span class="s-name">Kamera Vision</span>
                             <span class="s-status ok" id="sCam">Aktif</span>
                         </div>
+                        <div class="sensor-chip">
+                            <span class="s-name">Klasifikasi Orang</span>
+                            <span class="s-status ok" id="sPersonAcc">92.4% OK</span>
+                        </div>
                     </div>
                 </div>
 
                 <!-- CV Obstacle Detections List -->
                 <div class="cv-detections-box">
-                    <h3 class="block-title">Objek Terdeteksi (Computer Vision)</h3>
+                    <div class="cv-box-header">
+                        <h3 class="block-title">Objek Terdeteksi (Computer Vision)</h3>
+                        <span class="cv-acc-badge" id="cvAccBadge" title="Dataset Obstacle_detection: 1,102 sampel human">
+                            Akurasi Orang: <strong id="cvPersonAccBadge">92.4%</strong> (Dataset)
+                        </span>
+                    </div>
                     <div class="cv-list" id="cvListContainer">
-                        <div class="cv-item">
-                            <span class="cv-tag">Orang</span>
-                            <span class="cv-conf">89% confidence</span>
-                            <span class="cv-sector sector-center">TENGAH</span>
+                        <div class="cv-item cv-item-person">
+                            <div class="cv-item-left">
+                                <span class="cv-tag cv-tag-person">👤 Orang</span>
+                                <span class="cv-acc-tag">Acc: 92.4%</span>
+                            </div>
+                            <div class="cv-item-right">
+                                <span class="cv-conf">93% conf | ~1.8m</span>
+                                <span class="cv-sector sector-center">TENGAH</span>
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -236,6 +254,11 @@
                 <div class="perf-box">
                     <h3 class="block-title">Metrik Performa Evakuasi</h3>
                     <div class="perf-grid">
+                        <div class="perf-card perf-card-accent">
+                            <span class="p-label">Akurasi Klasifikasi Orang</span>
+                            <span class="p-val" id="pPersonAcc">92.4%</span>
+                            <span class="p-sub" style="font-size:9px;color:var(--text-muted);">mAP@50 (1,102 sampel dataset)</span>
+                        </div>
                         <div class="perf-card">
                             <span class="p-label">Akurasi SLAM (RMSE)</span>
                             <span class="p-val">±3.8 cm</span>

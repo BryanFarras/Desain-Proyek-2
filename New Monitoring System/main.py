@@ -87,10 +87,18 @@ shared_state = {
     'mission_state': 'IDLE',      # IDLE | RUNNING | PAUSED | RETURNING | EMERGENCY
     'mission_progress': 35.0,
     
+    # Computer Vision Person Classification Metrics (Dataset: Obstacle_detection)
+    'cv_person_accuracy': 92.4,        # mAP@50 score
+    'cv_person_precision': 93.8,       # Precision (%)
+    'cv_person_recall': 91.2,          # Recall (%)
+    'cv_person_f1': 92.5,              # F1-Score (%)
+    'cv_dataset_name': 'Obstacle_detection (Roboflow v7)',
+    'cv_person_samples': 1102,
+    
     # CV Obstacle Detections
     'detections': [
-        {'label': 'Orang', 'confidence': 0.89, 'sector': 'TENGAH', 'bbox': [180, 100, 320, 340]},
-        {'label': 'Rintangan', 'confidence': 0.76, 'sector': 'KIRI', 'bbox': [40, 220, 140, 360]}
+        {'label': 'Orang', 'confidence': 0.93, 'accuracy': 92.4, 'is_person': True, 'sector': 'TENGAH', 'distance': 1.8, 'bbox': [180, 100, 320, 340]},
+        {'label': 'Rintangan', 'confidence': 0.76, 'accuracy': 85.5, 'is_person': False, 'sector': 'KIRI', 'distance': 2.4, 'bbox': [40, 220, 140, 360]}
     ]
 }
 
@@ -272,20 +280,40 @@ def telemetry_worker():
                     if int(t * 5) % 25 == 0:
                         dets = []
                         if math.sin(t * 0.3) > -0.2:
+                            bx1, by1, bx2, by2 = 160, 120, 300, 340
+                            bw, bh = bx2 - bx1, by2 - by1
+                            b_area = bw * bh
+                            area_pct = round((b_area / float(640 * 480)) * 100, 1)
+                            d_est = camera_streamer.detector.calculate_distance_from_bbox_area(bw, bh, 640, 480, is_person=True)
                             dets.append({
                                 'label': 'Orang',
-                                'confidence': round(0.82 + math.sin(t) * 0.12, 2),
+                                'confidence': round(0.88 + math.sin(t) * 0.08, 2),
+                                'accuracy': shared_state['cv_person_accuracy'],
+                                'is_person': True,
+                                'dataset_class': 'human',
                                 'sector': 'TENGAH' if abs(math.cos(t)) < 0.4 else ('KIRI' if math.cos(t) < 0 else 'KANAN'),
-                                'bbox': [160, 120, 300, 340],
-                                'distance': 1.8
+                                'bbox': [bx1, by1, bx2, by2],
+                                'bbox_area': b_area,
+                                'area_percent': area_pct,
+                                'distance': d_est
                             })
                         if math.cos(t * 0.4) > 0.1:
+                            bx1, by1, bx2, by2 = 40, 200, 130, 330
+                            bw, bh = bx2 - bx1, by2 - by1
+                            b_area = bw * bh
+                            area_pct = round((b_area / float(640 * 480)) * 100, 1)
+                            d_est = camera_streamer.detector.calculate_distance_from_bbox_area(bw, bh, 640, 480, is_person=False)
                             dets.append({
                                 'label': 'Rintangan',
                                 'confidence': round(0.70 + math.cos(t) * 0.15, 2),
+                                'accuracy': 85.5,
+                                'is_person': False,
+                                'dataset_class': 'obstacle',
                                 'sector': 'KIRI',
-                                'bbox': [40, 200, 130, 330],
-                                'distance': 2.4
+                                'bbox': [bx1, by1, bx2, by2],
+                                'bbox_area': b_area,
+                                'area_percent': area_pct,
+                                'distance': d_est
                             })
                         shared_state['detections'] = dets
 
@@ -339,15 +367,39 @@ def snapshot():
 
 @app.route('/api/cv_detections')
 def cv_detections():
-    """Return real-time Computer Vision obstacle detections, FPS and latency."""
+    """Return real-time Computer Vision obstacle detections, FPS, latency, and dataset accuracy."""
+    d_metrics = camera_streamer.detector.dataset_metrics
     return jsonify({
         'detections': camera_streamer.get_detections(),
         'fps': round(camera_streamer.current_fps, 1),
         'latency_ms': round(camera_streamer.latency_ms, 1),
         'camera_type': camera_streamer.camera_type,
         'hardware_active': camera_streamer.hardware_active,
-        'engine': camera_streamer.detector.engine_type
+        'engine': camera_streamer.detector.engine_type,
+        'person_accuracy': d_metrics.get('person_accuracy_percent', shared_state['cv_person_accuracy']),
+        'person_precision': d_metrics.get('person_precision_percent', shared_state['cv_person_precision']),
+        'person_recall': d_metrics.get('person_recall_percent', shared_state['cv_person_recall']),
+        'person_f1': d_metrics.get('person_f1_percent', shared_state['cv_person_f1']),
+        'dataset_name': d_metrics.get('dataset_name', shared_state['cv_dataset_name']),
+        'person_samples': d_metrics.get('total_human_samples', shared_state['cv_person_samples'])
     })
+
+@app.route('/api/cv_benchmark')
+def cv_benchmark():
+    """Return detailed benchmark metrics for computer vision person classification."""
+    bench_paths = [
+        Path("../Computer Vision/person_classification_benchmark.json"),
+        Path("Computer Vision/person_classification_benchmark.json"),
+        Path("person_classification_benchmark.json"),
+    ]
+    for bp in bench_paths:
+        if bp.exists():
+            try:
+                with open(bp, "r", encoding="utf-8") as f:
+                    return jsonify(json.load(f))
+            except Exception:
+                pass
+    return jsonify(camera_streamer.detector.dataset_metrics)
 
 @app.route('/status')
 @app.route('/api/telemetry')

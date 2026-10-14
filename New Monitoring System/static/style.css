@@ -160,6 +160,18 @@ html, body {
 }
 .chip-dot-hw.connected { background: var(--accent-green); box-shadow: 0 0 6px var(--accent-green); }
 
+.chip-cv-acc {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(12, 22, 18, 0.88);
+}
+.chip-dot-cv {
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: var(--accent-green);
+    box-shadow: 0 0 6px var(--accent-green);
+}
+
 @keyframes blink {
     0%, 100% { opacity: 1; }
     50% { opacity: 0.2; }
@@ -596,6 +608,24 @@ html, body {
     padding: 12px;
     margin-bottom: 14px;
 }
+.cv-box-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 8px;
+}
+.cv-acc-badge {
+    font-size: 9px;
+    font-weight: 600;
+    padding: 2px 8px;
+    border-radius: 4px;
+    background: rgba(16, 185, 129, 0.12);
+    border: 1px solid rgba(16, 185, 129, 0.3);
+    color: var(--success-text);
+}
+.cv-acc-badge strong {
+    color: #34d399;
+}
 .cv-list {
     display: flex;
     flex-direction: column;
@@ -609,8 +639,34 @@ html, body {
     background: var(--bg-input);
     border-radius: var(--radius-md);
     border: 1px solid var(--border-subtle);
+    transition: var(--transition);
+}
+.cv-item-person {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: rgba(16, 185, 129, 0.05);
+}
+.cv-item-left {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.cv-item-right {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 .cv-tag { font-weight: 600; color: var(--text-primary); font-size: 11px; }
+.cv-tag-person { color: #34d399; font-weight: 700; }
+.cv-acc-tag {
+    font-size: 9px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    padding: 1px 5px;
+    border-radius: 3px;
+    background: rgba(16, 185, 129, 0.18);
+    color: #6ee7b7;
+    border: 1px solid rgba(16, 185, 129, 0.35);
+}
 .cv-conf { font-size: 10px; color: var(--text-muted); font-family: var(--font-mono); }
 .cv-sector {
     font-size: 9px;
@@ -632,6 +688,14 @@ html, body {
 .cv-sector.sector-right {
     background: rgba(16, 185, 129, 0.15);
     color: var(--accent-green);
+}
+
+.perf-card-accent {
+    border-color: rgba(16, 185, 129, 0.35);
+    background: linear-gradient(135deg, var(--bg-elevated) 0%, rgba(16, 185, 129, 0.08) 100%);
+}
+.perf-card-accent .p-val {
+    color: #34d399;
 }
 
 .overlay-top-center.alert-hazard {
