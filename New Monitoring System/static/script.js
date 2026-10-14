@@ -693,28 +693,58 @@ async function pollTelemetry() {
         if (el.sLidar) el.sLidar.textContent = data.lidar_ok ? 'Aktif' : 'Off';
         if (el.sImu) el.sImu.textContent = data.imu_ok ? 'Aktif' : 'Off';
         if (el.sVib) el.sVib.textContent = data.vibration_ok ? 'Normal' : 'Getaran!';
+        if (el.sCam) {
+            el.sCam.textContent = data.camera_type ? data.camera_type.toUpperCase() : 'Aktif';
+            el.sCam.classList.add('ok');
+        }
 
         // CV Obstacle Detections
         const dets = data.detections || [];
+        const cvBadge = document.getElementById('cvDetectionBadge');
         if (dets.length > 0) {
+            const hasCenterHazard = dets.some(d => d.sector === 'TENGAH');
             const first = dets[0];
-            if (el.cvDetText) el.cvDetText.textContent = `${first.label} ${(first.confidence * 100).toFixed(0)}% [${first.sector}]`;
+            const distStr = first.distance ? ` ~${first.distance}m` : '';
+
+            if (cvBadge) {
+                if (hasCenterHazard) {
+                    cvBadge.classList.add('alert-hazard');
+                    cvBadge.classList.remove('alert-clear');
+                } else {
+                    cvBadge.classList.remove('alert-hazard');
+                    cvBadge.classList.remove('alert-clear');
+                }
+            }
+
+            if (el.cvDetText) {
+                if (hasCenterHazard) {
+                    el.cvDetText.textContent = `⚠️ BAHAYA: ${first.label} [TENGAH]${distStr}`;
+                } else {
+                    el.cvDetText.textContent = `🎯 ${first.label} ${(first.confidence * 100).toFixed(0)}% [${first.sector}]${distStr}`;
+                }
+            }
         } else {
-            if (el.cvDetText) el.cvDetText.textContent = 'Jalur Bebas Rintangan';
+            if (cvBadge) {
+                cvBadge.classList.remove('alert-hazard');
+                cvBadge.classList.add('alert-clear');
+            }
+            if (el.cvDetText) el.cvDetText.textContent = '✓ Bebas Rintangan (Clear)';
         }
 
         if (el.cvListContainer) {
             el.cvListContainer.innerHTML = '';
             if (dets.length === 0) {
-                el.cvListContainer.innerHTML = '<div style="color:var(--text-muted);font-size:11px;padding:4px;">Tidak ada rintangan di zona pandang kamera.</div>';
+                el.cvListContainer.innerHTML = '<div style="color:var(--text-muted);font-size:11px;padding:4px;">Tidak ada rintangan di zona pandang kamera. (30 FPS Stream)</div>';
             } else {
                 dets.forEach(d => {
                     const row = document.createElement('div');
                     row.className = 'cv-item';
+                    const sectorClass = d.sector === 'TENGAH' ? 'sector-center' : (d.sector === 'KIRI' ? 'sector-left' : 'sector-right');
+                    const distInfo = d.distance ? ` | ~${d.distance}m` : '';
                     row.innerHTML = `
                         <span class="cv-tag">${escapeHtml(d.label)}</span>
-                        <span class="cv-conf">${(d.confidence * 100).toFixed(0)}% confidence</span>
-                        <span class="cv-sector">${escapeHtml(d.sector)}</span>
+                        <span class="cv-conf">${(d.confidence * 100).toFixed(0)}% conf${distInfo}</span>
+                        <span class="cv-sector ${sectorClass}">${escapeHtml(d.sector)}</span>
                     `;
                     el.cvListContainer.appendChild(row);
                 });
@@ -935,7 +965,7 @@ function init() {
     setInterval(updateClock, 1000);
 
     pollTelemetry();
-    setInterval(pollTelemetry, 1500);
+    setInterval(pollTelemetry, 250);
 
     addLog('System online. AER Monitoring and Hardware Bridge initialized.', 'success');
 }

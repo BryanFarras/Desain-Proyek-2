@@ -620,6 +620,38 @@ html, body {
     background: rgba(59, 130, 246, 0.15);
     color: var(--accent-blue);
 }
+.cv-sector.sector-center {
+    background: rgba(239, 68, 68, 0.2);
+    color: var(--accent-red);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+.cv-sector.sector-left {
+    background: rgba(59, 130, 246, 0.15);
+    color: var(--accent-blue);
+}
+.cv-sector.sector-right {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--accent-green);
+}
+
+.overlay-top-center.alert-hazard {
+    background: rgba(239, 68, 68, 0.92);
+    border-color: #ef4444;
+    color: #ffffff;
+    box-shadow: 0 0 16px rgba(239, 68, 68, 0.7);
+    animation: hazard-pulse 0.7s infinite alternate;
+}
+.overlay-top-center.alert-clear {
+    background: rgba(16, 185, 129, 0.88);
+    border-color: #10b981;
+    color: #ffffff;
+    box-shadow: 0 0 12px rgba(16, 185, 129, 0.4);
+}
+
+@keyframes hazard-pulse {
+    from { transform: translateX(-50%) scale(1); }
+    to { transform: translateX(-50%) scale(1.04); }
+}
 
 /* Performance Box */
 .perf-box {

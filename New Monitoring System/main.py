@@ -109,7 +109,7 @@ def log_event(msg: str, tag: str = "info"):
 
 # Initialize Hardware Modules
 serial_bridge = SerialBridge(baudrate=115200)
-camera_streamer = CameraStreamer(width=640, height=480, fps=20)
+camera_streamer = CameraStreamer(width=640, height=480, fps=30)
 
 # Wire incoming serial messages to system logs
 def on_serial_rx(msg: str):
@@ -154,7 +154,11 @@ def execute_system_command(cmd_id: str) -> dict:
     elif cmd_id == 'camera_check':
         c_type = camera_streamer.camera_type
         c_act = camera_streamer.hardware_active
-        out = f"Camera Interface: {c_type.upper()} | Hardware Sensor Active: {c_act} | 640x480 @ 20 FPS"
+        fps = camera_streamer.current_fps
+        lat = camera_streamer.latency_ms
+        dets = len(camera_streamer.get_detections())
+        eng = camera_streamer.detector.engine_type
+        out = f"Camera Interface: {c_type.upper()} | Hardware Sensor Active: {c_act} | 640x480 @ {fps:.1f} FPS ({lat:.0f}ms) | Engine: {eng.upper()} | Detections: {dets}"
         return {"success": True, "output": out}
         
     elif cmd_id == 'network_info':
@@ -235,45 +239,55 @@ def telemetry_worker():
                 shared_state['speed'] = round(math.sqrt(lin**2 + (ang * 0.2)**2), 2)
 
                 # Integrate position
-                dt = 0.5
+                dt = 0.2
                 yaw = shared_state['yaw'] + ang * dt
                 shared_state['yaw'] = yaw
                 shared_state['x'] = round(shared_state['x'] + lin * math.cos(yaw) * dt, 2)
                 shared_state['y'] = round(shared_state['y'] + lin * math.sin(yaw) * dt, 2)
 
                 # Slow realistic battery consumption
-                shared_state['battery'] = max(5.0, round(shared_state['battery'] - 0.01, 1))
+                shared_state['battery'] = max(5.0, round(shared_state['battery'] - 0.004, 1))
                 shared_state['battery_voltage'] = round(11.0 + (shared_state['battery'] / 100.0) * 1.6, 2)
 
                 # Dynamic SLAM area
-                shared_state['area'] = min(500.0, round(shared_state['area'] + (abs(lin) * 0.1), 1))
+                shared_state['area'] = min(500.0, round(shared_state['area'] + (abs(lin) * 0.04), 1))
                 
                 # Distance to exit
                 exit_x, exit_y = 12.0, 10.0
                 dist_exit = math.sqrt((exit_x - shared_state['x'])**2 + (exit_y - shared_state['y'])**2)
                 shared_state['dist_to_exit'] = round(dist_exit, 1)
 
-                # Simulated obstacle distance fluctuations
-                shared_state['min_obstacle_distance'] = round(max(0.4, 2.0 + math.sin(t * 0.4) * 1.2), 2)
-
-                # Periodic CV detections simulation if standalone
-                if int(t) % 6 == 0:
-                    dets = []
-                    if math.sin(t * 0.3) > -0.2:
-                        dets.append({
-                            'label': 'Orang',
-                            'confidence': round(0.82 + math.sin(t) * 0.12, 2),
-                            'sector': 'TENGAH' if abs(math.cos(t)) < 0.4 else ('KIRI' if math.cos(t) < 0 else 'KANAN'),
-                            'bbox': [160, 120, 300, 340]
-                        })
-                    if math.cos(t * 0.4) > 0.1:
-                        dets.append({
-                            'label': 'Rintangan',
-                            'confidence': round(0.70 + math.cos(t) * 0.15, 2),
-                            'sector': 'KIRI',
-                            'bbox': [40, 200, 130, 330]
-                        })
-                    shared_state['detections'] = dets
+                # Sync CV detections directly from live camera if active
+                if camera_streamer.hardware_active:
+                    live_dets = camera_streamer.get_detections()
+                    shared_state['detections'] = live_dets
+                    if live_dets:
+                        dists = [d.get('distance', 2.0) for d in live_dets]
+                        shared_state['min_obstacle_distance'] = min(dists)
+                    else:
+                        shared_state['min_obstacle_distance'] = 3.5
+                else:
+                    # Simulated obstacle distance fluctuations & synthetic detections
+                    shared_state['min_obstacle_distance'] = round(max(0.4, 2.0 + math.sin(t * 0.4) * 1.2), 2)
+                    if int(t * 5) % 25 == 0:
+                        dets = []
+                        if math.sin(t * 0.3) > -0.2:
+                            dets.append({
+                                'label': 'Orang',
+                                'confidence': round(0.82 + math.sin(t) * 0.12, 2),
+                                'sector': 'TENGAH' if abs(math.cos(t)) < 0.4 else ('KIRI' if math.cos(t) < 0 else 'KANAN'),
+                                'bbox': [160, 120, 300, 340],
+                                'distance': 1.8
+                            })
+                        if math.cos(t * 0.4) > 0.1:
+                            dets.append({
+                                'label': 'Rintangan',
+                                'confidence': round(0.70 + math.cos(t) * 0.15, 2),
+                                'sector': 'KIRI',
+                                'bbox': [40, 200, 130, 330],
+                                'distance': 2.4
+                            })
+                        shared_state['detections'] = dets
 
             # Update camera streamer HUD telemetry
             camera_streamer.update_telemetry({
@@ -285,10 +299,10 @@ def telemetry_worker():
                 'detections': shared_state['detections']
             })
 
-            t += 0.5
-            time.sleep(0.5)
+            t += 0.2
+            time.sleep(0.2)
         except Exception as e:
-            time.sleep(1.0)
+            time.sleep(0.5)
 
 # Start background telemetry thread
 bg_telemetry_thread = threading.Thread(target=telemetry_worker, daemon=True)
@@ -322,6 +336,18 @@ def snapshot():
     if img_bytes:
         return Response(img_bytes, mimetype='image/jpeg')
     return jsonify({'error': 'No frame available'}), 503
+
+@app.route('/api/cv_detections')
+def cv_detections():
+    """Return real-time Computer Vision obstacle detections, FPS and latency."""
+    return jsonify({
+        'detections': camera_streamer.get_detections(),
+        'fps': round(camera_streamer.current_fps, 1),
+        'latency_ms': round(camera_streamer.latency_ms, 1),
+        'camera_type': camera_streamer.camera_type,
+        'hardware_active': camera_streamer.hardware_active,
+        'engine': camera_streamer.detector.engine_type
+    })
 
 @app.route('/status')
 @app.route('/api/telemetry')
