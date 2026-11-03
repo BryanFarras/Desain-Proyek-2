@@ -39,7 +39,7 @@ def generate_launch_description():
     # 3. NODE GAZEBO SIMULATION
     # ==============================================================
     # Menggunakan empty.world sebagai arena default (sesuaikan jika punya world sendiri)
-    world_file = os.path.join(share_dir, 'worlds', 'simple_maze.world')
+    world_file = os.path.join(share_dir, 'worlds', 'building_floor.world')
 
     gazebo = IncludeLaunchDescription(
         PythonLaunchDescriptionSource([
@@ -67,7 +67,7 @@ def generate_launch_description():
         executable='robot_state_publisher',
         name='robot_state_publisher',
         output='both',
-        parameters=[{'robot_description': robot_urdf}]
+        parameters=[{'robot_description': robot_urdf, 'use_sim_time': True}]
     )
 
     gz_spawn_entity = Node(
@@ -94,7 +94,6 @@ def generate_launch_description():
         arguments=[
             '/clock@rosgraph_msgs/msg/Clock[gz.msgs.Clock',
             '/scan@sensor_msgs/msg/LaserScan[gz.msgs.LaserScan',
-            '/tf@tf2_msgs/msg/TFMessage[gz.msgs.Pose_V',
             # Opsional: Jika kamu memakai kamera nantinya
             # '/camera/image_raw@sensor_msgs/msg/Image[gz.msgs.Image',
         ],
@@ -122,13 +121,18 @@ def generate_launch_description():
     # ==============================================================
     # 7. TOPIC RELAY & INISIALISASI KECEPATAN
     # ==============================================================
-    # Menyambungkan topik standar teleop /cmd_vel ke topik controller
+    # Menyambungkan topik standar /cmd_vel ke topik controller.
+    # Memakai node relay milik sendiri (bukan topic_tools) supaya QoS-nya
+    # kompatibel dengan publisher nav2 (VOLATILE).
     cmd_vel_relay = Node(
-        package='topic_tools',
-        executable='relay',
+        package='AREbot_description',
+        executable='cmd_vel_relay',
         name='cmd_vel_relay',
         output='screen',
-        arguments=['/cmd_vel', '/diff_drive_controller/cmd_vel_unstamped'],
+        parameters=[{
+            'input_topic': '/cmd_vel',
+            'output_topic': '/diff_drive_controller/cmd_vel_unstamped',
+        }],
     )
 
     rviz_node = Node(

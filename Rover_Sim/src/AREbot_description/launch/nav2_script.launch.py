@@ -10,7 +10,9 @@ def generate_launch_description():
     twist_mux_params_file = os.path.join(arebot_share_dir, 'config', 'twist_mux_params.yaml')
 
     script_pertama = ExecuteProcess(
-        cmd=['gnome-terminal', '--', 'ros2', 'run', 'AREbot_description', 'teleop_twist_keyboard'],
+        cmd=['gnome-terminal', '--', 'ros2', 'run', 'AREbot_description', 'teleop_twist_keyboard',
+             '--ros-args', '-p', 'speed:=0.25', '-p', 'turn:=0.6',
+             '-p', 'topic:=cmd_vel_keyboard'],
         output='screen'
     )
 

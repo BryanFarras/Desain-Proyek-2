@@ -1,0 +1,13 @@
+# Settings for main_realbot_nav_setup.launch.py (Raspberry Pi, real robot).
+# Change map_yaml to switch maps. "~" is expanded at launch time.
+map_yaml: ~/desproRover_ws/map_digilab_save.yaml
+
+# Pose of the robot in the map frame when the map was created.
+# Used as the prior for auto_localize (the robot starts here).
+initial_pose:
+  x: 0.0
+  y: 0.0
+  yaw: 0.0
+
+# Request /request_nomotion_update at this rate (Hz), like run_amcl.py.
+nomotion_update_rate: 2.0

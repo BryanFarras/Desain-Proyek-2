@@ -33,15 +33,17 @@ diff_drive_controller:
     # publish_limited_velocity: true
     # velocity_rolling_window_size: 10
 
-    # linear.x.has_velocity_limits: true
-    # linear.x.max_velocity: 5.0
-    # linear.x.has_acceleration_limits: true
-    # linear.x.max_acceleration: 3.0
+    # Limits keep forward acceleration far below the ~3 m/s^2 where the robot
+    # tips backwards, and max_velocity below the wheel limit (10 rad/s = 0.325 m/s)
+    linear.x.has_velocity_limits: true
+    linear.x.max_velocity: 0.25
+    linear.x.has_acceleration_limits: true
+    linear.x.max_acceleration: 0.5
 
-    # angular.z.has_velocity_limits: true
-    # angular.z.max_velocity: 10.0
-    # angular.z.has_acceleration_limits: true
-    # angular.z.max_acceleration: 5.0
+    angular.z.has_velocity_limits: true
+    angular.z.max_velocity: 0.6
+    angular.z.has_acceleration_limits: true
+    angular.z.max_acceleration: 1.5
 
 imu_sensor_broadcaster:
   ros__parameters:

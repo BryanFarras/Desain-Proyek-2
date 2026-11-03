@@ -36,6 +36,12 @@ setup(
             'teleop_twist_keyboard = AREbot_description.teleop_twist_keyboard:main',
             'run_amcl = AREbot_description.run_amcl:main',
             'imu_reader = AREbot_description.imu_reader:main',
+            'nav2_navigation = AREbot_description.nav2_navigation:main',
+            'auto_localize = AREbot_description.auto_localize:main',
+            'cmd_vel_relay = AREbot_description.cmd_vel_relay:main',
+            'esp32_bridge = AREbot_description.esp32_bridge:main',
+            'wheel_odometry = AREbot_description.wheel_odometry:main',
+            'usb_preflight = AREbot_description.usb_preflight:main',
         ],
     },
 )

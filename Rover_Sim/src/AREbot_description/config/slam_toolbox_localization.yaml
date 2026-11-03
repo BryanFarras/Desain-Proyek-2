@@ -12,4 +12,4 @@ slam_toolbox:
     transform_publish_period: 0.02
     minimum_time_interval: 0.1
     minimum_travel_distance: 0.1
-    minimum_travel_heading: 0.1
+    minimum_travel_heading: 0.05
