@@ -8,7 +8,7 @@ Equivalent to:
 import subprocess
 import time
 # --- Edit these ---
-MAP_YAML = '/home/edar/desproRover_ws/maze_map_save.yaml'
+MAP_YAML = '/home/edar/desproRover_ws/building_map_save.yaml'
 NODE_NAME = '/map_server'
 STARTUP_DELAY = 2.0  # seconds to wait for the node to appear
 def run_lifecycle(transition):

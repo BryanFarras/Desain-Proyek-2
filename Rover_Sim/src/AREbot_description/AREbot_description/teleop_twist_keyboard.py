@@ -144,6 +144,7 @@ def main():
     frame_id = node.declare_parameter('frame_id', '', read_only_descriptor).value
     speed = node.declare_parameter('speed', 0.5, read_only_descriptor).value
     turn = node.declare_parameter('turn', 1.0, read_only_descriptor).value
+    topic = node.declare_parameter('topic', '/cmd_vel', read_only_descriptor).value
 
     if not stamped and frame_id:
         raise Exception("'frame_id' can only be set when 'stamped' is True")
@@ -153,7 +154,7 @@ def main():
     else:
         TwistMsg = geometry_msgs.msg.Twist
 
-    pub = node.create_publisher(TwistMsg, 'cmd_vel_keyboard', 10)
+    pub = node.create_publisher(TwistMsg, topic, 10)
 
     spinner = threading.Thread(target=rclpy.spin, args=(node,))
     spinner.start()

@@ -44,8 +44,10 @@
 
   <link name="base_link" />
 
+  <!-- base_footprint sits on the wheel axle (the point diff_drive_controller odometry tracks);
+       base_link stays at the chassis center, 0.04 m ahead of the axle -->
   <joint name="base_footprint_joint" type="fixed">
-    <origin xyz="0 0 0" rpy="0 0 0" />
+    <origin xyz="0.04 0 0" rpy="0 0 0" />
     <parent link="base_footprint" />
     <child link="base_link" />
   </joint>
@@ -163,29 +165,6 @@
     <origin xyz="0.055 0 0.025" rpy="0 0 0" />
     <parent link="base_link" />
     <child link="caster" />
-  </joint>
-
-    <link name="support">
-    <visual>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <box size="0.01 0.01 0.05"/>
-      </geometry>
-      <material name="grey"/>
-    </visual>
-    <collision>
-      <origin xyz="0 0 0" rpy="0 0 0" />
-      <geometry>
-        <box size="0.01 0.01 0.05"/>
-      </geometry>
-    </collision>
-    <xacro:sphere_inertia m="0.1" r="0.025"/>
-  </link>
-
-  <joint name="support_joint" type="fixed">
-    <origin xyz="-0.08 0 0.025" rpy="0 0 0" />
-    <parent link="base_link" />
-    <child link="support" />
   </joint>
 
   <link name="laser">

@@ -1,0 +1,33 @@
+BACKUP SEBELUM PERBAIKAN NAV2 (Tahap 1)
+========================================
+Backup : backups/arebot_pre_navfix_20261027_130922.tar.gz
+SHA256 : 354f97b19a7877314eaf3bcd0e8b02dd6def8d6b8cdafc32c39a6db47f1a0cf6
+Diff   : backups/changes_20261027_130922.diff
+
+Isi backup:
+- src/AREbot_description/{config,launch,urdf,AREbot_description,package.xml,setup.py,setup.cfg}
+- install/AREbot_description/share/AREbot_description/{config,launch}
+- kamar_save_map.yaml, kamar_save_map.pgm
+
+CARA REVERT TOTAL:
+  cd ~/desproRover_ws
+  tar -xzf backups/arebot_pre_navfix_20261027_130922.tar.gz
+  colcon build --packages-select AREbot_description
+  source install/setup.bash
+
+CARA REVERT SATU FILE (contoh):
+  cd ~/desproRover_ws
+  tar -xzf backups/arebot_pre_navfix_20261027_130922.tar.gz \
+      src/AREbot_description/config/nav2_navigation_params_real.yaml
+  colcon build --packages-select AREbot_description
+
+VERIFIKASI CHECKSUM FILE ASLI:
+  3242dd89c6671f9f83cc89953bda539354324420c40c01b6d3ce223077c76863  nav2_navigation_params_real.yaml
+  2e79873b4e8839240455e46a6a66a77f47092ae148c732aa58ac5e3fdc662c10  esp32_bridge.yaml
+  7e013e0757879bde4e744e4d9af173eb5b911d00f402e74d3a3d0977f805d73f  realbot_nav_setup.yaml
+  43f8f8b3e2a6365d0b44488c7a918c5a87560ac126c31b33d211872f4d2b35f1  kamar_save_map.yaml
+  e328d429530fdfa9f96b0b81de4f3cfdb708fccce1c3306a9c052244032a372f  kamar_save_map.pgm
+
+CHECKSUM SETELAH PERBAIKAN (Tahap 1):
+7ed59d69eb5fd2da70195c8411ef216db0a4596f1ce2dd90ce768d3bbeb09011  src/AREbot_description/config/nav2_navigation_params_real.yaml
+35d8bbb9a57fa60bb2d2b5c004c85aff09ff7c158a3c10bc8de687cf794458bd  src/AREbot_description/config/esp32_bridge.yaml
