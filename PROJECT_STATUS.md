@@ -1,7 +1,8 @@
 # DESPRO Rover — Project Completion Review & To-Do
 
 **Workspace:** `/home/dar/desproRover_ws`
-**Review date:** 4 November 2026 (updated after the first P0 implementation pass)
+**Review date:** 4 November 2026 (updated after hardware link verification and
+the P1 documentation/hygiene pass)
 **Platform:** Raspberry Pi 4 (aarch64), ROS 2 Humble
 
 > This review infers "completion" from the artifacts because no formal
@@ -12,21 +13,27 @@
 
 ## 1. Verdict
 
-**Code-side P0 fixes are implemented and the package builds cleanly. The
-project is still not demo-ready because the hardware/acceptance items could not
-be run: the LiDAR is not connected and no robot test was possible after the
-changes.**
+**Both USB devices are now connected and verified: the LiDAR publishes
+`/scan`, the ESP32 publishes `/wheel_telemetry`, and the package builds and
+passes its tests. The project is still not demo-ready because the motion tests
+(odometry calibration, Nav2 acceptance, 60-minute stability) have not been
+run.**
 
 | Measure | Before P0 work | Now |
 |---|---|---|
-| Functional completion (code) | ~65% | **~80%** |
-| Verified / demo-ready | ~45% | **~50%** (not re-verified on hardware) |
+| Functional completion (code) | ~65% | **~85%** |
+| Verified / demo-ready | ~45% | **~60%** (link verified, motion not) |
 
-Current hardware state (probed on 4 Nov):
+Current hardware state (probed on 4 Nov, after the LiDAR was reconnected):
 
-- `/dev/ttyUSB1` = ESP32 (detected as `esp32`)
-- `/dev/ttyUSB0` = **missing / not detected** (LiDAR)
-- Pre-flight therefore keeps waiting: `USB belum terdeteksi (ttyUSB0=None, ttyUSB1=esp32)`
+- `/dev/ttyUSB0` = **LiDAR** (LD06 data at 230400 baud)
+- `/dev/ttyUSB1` = **ESP32** (`DATA:0,0,0.00,0.00` at 115200 baud)
+- The order is the opposite of the old hardcoded defaults. Pre-flight and both
+  launch files now auto-detect the roles and report:
+  `USB OK: /dev/ttyUSB1 = ESP32, /dev/ttyUSB0 = LiDAR`
+- Headless SLAM stack test: `/scan` (frame `laser`) and `/wheel_telemetry`
+  both publish; `esp32_bridge` connected to `/dev/ttyUSB1`; no timeouts during
+  the check.
 
 Last confirmed working autonomous run: **27 October 2026**
 (`bt_navigator` logged 4 successful goals, 1 failed).
@@ -118,6 +125,36 @@ timed out, ESP32 telemetry stopped.
 - `map_eval.py` with new defaults — **runs successfully** (building map:
   2.46% / 1.10% dimension error, 2.3 cm mean wall error, 100% coverage).
 
+### Hardware verification + P1 pass (continued 4 Nov 2026)
+
+- LiDAR reconnected; both serial devices verified (see state above).
+- `usb_preflight.py`
+  - Added `discover_ports()` / `candidate_ports()`: probes data instead of
+    assuming `ttyUSB0`/`ttyUSB1`, prefers udev aliases, and accepts `auto`
+    (the new default).
+  - `real_robot_slam` and `main_realbot_nav_setup` call the same discovery for
+    their launch-argument defaults, so swapped USB order no longer blocks a
+    launch. Explicit `esp32_port:=` / `lidar_port:=` still override.
+- `esp32_bridge.py`
+  - Auto-detection now probes the CP2102 candidates for `DATA:` telemetry
+    instead of taking the first matching VID:PID (the LiDAR has the same
+    VID:PID, so the old code could open the wrong device).
+  - Config default is now `/dev/arebot_esp32` with `auto_detect: true`.
+- Added `udev/99-arebot-usb.rules` with the verified port paths
+  (`1-1.1` = LiDAR, `1-1.2` = ESP32). Installation still needs `sudo`.
+- Added a root `README.md`: architecture, wiring, serial protocol, build,
+  mapping, navigation, teleop, tools, troubleshooting, simulation status.
+- Dead code moved to `backups/dead_code_20261104/` (beluga launch/params and
+  the stale `slam_toolbox_localization.yaml`). Fixed the hardcoded map path in
+  `map_server.py`; remaining `/home/dar` example removed.
+- `git init` + `.gitignore` + initial commit (`9878cff`). The vendored
+  `ldlidar_stl_ros2` copy is now tracked normally; its nested `.git` is
+  archived at `backups/ldlidar_stl_ros2_git_20261104.tar.gz`.
+- Removed nested `src/AREbot_description/{build,install,log}` and
+  `__pycache__` directories.
+- Fixed all package `flake8` (max 99) and `pydocstyle` errors. `colcon test`
+  now reports **0 failures** (copyright test still skipped).
+
 ---
 
 ## 3. Completion matrix (updated)
@@ -132,14 +169,14 @@ timed out, ESP32 telemetry stopped.
 | Nav2 navigation | 🟡 Tuned, unverified | Timeouts/rates adjusted; needs 10/10 goal test |
 | Odometry | 🟡 Tooling ready, not calibrated | Run `tools/calibrate_odometry.py` on hardware |
 | Teleop | ✅ Code fixed | Headless launch smoke-tested |
-| Hardware link | 🔴 Blocked | LiDAR not detected; only ESP32 on ttyUSB1 |
+| Hardware link | ✅ Verified | LiDAR `/scan` + ESP32 `/wheel_telemetry` on 4 Nov |
 | Long-run USB stability | 🔴 Not fixed | LiDAR/ESP32 dropouts observed on 31 Oct |
 | End-to-end acceptance | 🔴 Not run | Tool and procedure are ready |
 | Simulation (Gazebo) | 🔴 Not runnable here | `ros_gz_sim`, `ros_gz_bridge`, Gazebo not installed |
 | Evaluation baseline | 🟡 Partial | `map_eval` works; `live_eval` baseline is from 14 Oct |
-| Documentation | 🟡 Partial | Calibration + udev docs added; root README still missing |
-| Tests / lint | 🟡 Partial | Changed files clean; legacy files still fail flake8 |
-| Version control | 🔴 None | Workspace is not a git repo |
+| Documentation | ✅ Good | Root README, calibration, udev, status, eval docs |
+| Tests / lint | ✅ Green | `flake8` + `pydocstyle` pass; copyright skipped |
+| Version control | ✅ Done | `git init`, `.gitignore`, initial commit `9878cff` |
 | ESP32 firmware | ❓ Not in repo | No `.ino` / PlatformIO project found |
 
 ---
@@ -148,19 +185,20 @@ timed out, ESP32 telemetry stopped.
 
 ### P0 — Remaining (hardware-dependent)
 
-- [ ] **Connect / replace the LiDAR and confirm both ports**
-  - Current state: only `/dev/ttyUSB1` is present and it is the ESP32.
-  - Check cable, power, and USB port; then run:
-    ```bash
-    ros2 run AREbot_description usb_preflight
-    ```
-  - **Acceptance:** `USB OK: /dev/ttyUSB0 = ESP32, /dev/ttyUSB1 = LiDAR`.
-- [ ] **Install the udev rules for stable device names**
-  - Follow `udev/99-arebot-usb.rules.example`; verify with:
+- [x] **Connect / replace the LiDAR and confirm both ports**
+  - Verified 4 Nov: `/dev/ttyUSB0` = LiDAR, `/dev/ttyUSB1` = ESP32.
+  - `ros2 run AREbot_description usb_preflight` now auto-detects and prints
+    `USB OK: /dev/ttyUSB1 = ESP32, /dev/ttyUSB0 = LiDAR`.
+  - `/scan` and `/wheel_telemetry` were confirmed live with the headless SLAM
+    launch.
+- [ ] **Install the udev rules for stable device names** (file ready; needs sudo)
+  - `udev/99-arebot-usb.rules` contains the verified paths (`1-1.1` LiDAR,
+    `1-1.2` ESP32). Follow it or the generic `.example`; then verify with:
     ```bash
     ls -l /dev/arebot_esp32 /dev/arebot_lidar
     ```
-  - Launch with `esp32_port:=/dev/arebot_esp32 lidar_port:=/dev/arebot_lidar`.
+  - Launch with `esp32_port:=/dev/arebot_esp32 lidar_port:=/dev/arebot_lidar`
+    (the launch files prefer the aliases automatically once they exist).
 - [ ] **Investigate long-run USB dropouts**
   - LiDAR timed out after ~73 min; ESP32 telemetry stopped after ~3 h on 31 Oct.
   - Check USB power/cable/hub; disable USB autosuspend if needed.
@@ -189,27 +227,30 @@ timed out, ESP32 telemetry stopped.
 
 ### P1 — Deliverable quality
 
-- [ ] **Write the root README**
+- [x] **Write the root README**
   - Architecture, wiring, serial protocol (`DATA:...`, `speed(...)`,
     `berhenti`), install, mapping, navigation, teleop, simulation,
     troubleshooting.
-  - Document the current map (`map_digilab_save.yaml`) and how to save new maps.
-- [ ] **Clean up remaining hardcoded paths**
-  - `AREbot_description/map_server.py`
-  - `config/slam_toolbox_localization.yaml`
-  - `launch/beluga_localizaton_amcl.launch.py`
-- [ ] **Remove dead / broken code**
-  - `beluga_*` (build failed on missing `range-v3`; `beluga_amcl` not installed)
-  - unused `map_server.py`, stale `slam_toolbox_localization.yaml`
-  - nested `src/AREbot_description/{build,install,log}`, `__pycache__`
-  - archive obsolete maps into `maps/`
-- [ ] **Repository hygiene**
-  - `git init`, `.gitignore` (`build/`, `install/`, `log/`, `__pycache__/`,
-    old maps).
-- [ ] **Make all tests / lint green**
-  - Fix legacy `flake8` errors (E302, E501, W291/W292/W293, unused imports).
-  - `colcon test --packages-select AREbot_description` + `colcon test-result`.
-  - Add smoke tests for config loading and launch descriptions.
+  - Documents `map_digilab_save.yaml` and how to save new maps.
+- [x] **Clean up remaining hardcoded paths**
+  - Fixed `AREbot_description/map_server.py`; removed the stale
+    `slam_toolbox_localization.yaml` and beluga launch/params.
+- [x] **Remove dead / broken code**
+  - `beluga_*` + stale localization config moved to
+    `backups/dead_code_20261104/`.
+  - Nested `src/AREbot_description/{build,install,log}`, `__pycache__`
+    removed.
+  - `map_server.py` retained (now uses `AREBOT_MAP_YAML` / `~` expansion).
+  - Obsolete maps are still at the repo root; archive them into `maps/` if the
+    deliverable wants a tidy root.
+- [x] **Repository hygiene**
+  - `git init`, `.gitignore`, initial commit. Large serialized maps, build
+    trees, logs, and evaluation output are ignored.
+- [x] **Make all tests / lint green**
+  - Fixed every `flake8` (max 99) and `pydocstyle` error.
+  - `colcon test --packages-select AREbot_description` → **0 failures**
+    (copyright skipped).
+  - Still to add: smoke tests for config loading / launch descriptions.
 - [ ] **Make simulation reproducible**
   - Install/document Gazebo Fortress + `ros_gz_sim` / `ros_gz_bridge`.
   - Decide sim/real geometry parity: sim uses `0.0325 m / 0.22 m`, real uses

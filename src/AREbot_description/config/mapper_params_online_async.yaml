@@ -20,7 +20,7 @@ slam_toolbox:
     # To continue an existing serialized map instead, switch mode to
     # "localization" and set an absolute map_file_name (slam_toolbox does not
     # expand "~"):
-    # map_file_name: /home/dar/desproRover_ws/building_map_serialize
+    # map_file_name: /absolute/path/to/building_map_serialize
     # map_start_pose: [0.0, 0.0, 0.0]
     # map_start_at_dock: true
 

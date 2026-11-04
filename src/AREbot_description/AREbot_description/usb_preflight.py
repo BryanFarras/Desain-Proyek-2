@@ -130,23 +130,23 @@ def _resolve_ports(args):
     if 'auto' in (esp32_port, lidar_port):
         found = discover_ports()
         if esp32_port == 'auto':
-            esp32_port = found.get('esp32', ESP32_PORT)
+            esp32_port = found.get('esp32')
         if lidar_port == 'auto':
-            lidar_port = found.get('lidar', LIDAR_PORT)
+            lidar_port = found.get('lidar')
     return esp32_port, lidar_port
 
 
 def main(argv=None):
     args = _parse_args(argv)
     esp32_port, lidar_port = _resolve_ports(args)
-    print(f'usb_preflight: memeriksa USB ESP32 ({esp32_port}) & '
-          f'LiDAR ({lidar_port})...', flush=True)
+    print(f'usb_preflight: memeriksa USB ESP32 ({esp32_port or "auto"}) & '
+          f'LiDAR ({lidar_port or "auto"})...', flush=True)
     while True:
         try:
             if 'auto' in (args.esp32_port, args.lidar_port):
                 esp32_port, lidar_port = _resolve_ports(args)
-            esp = classify(esp32_port)
-            lidar = classify(lidar_port)
+            esp = classify(esp32_port) if esp32_port else None
+            lidar = classify(lidar_port) if lidar_port else None
         except KeyboardInterrupt:
             print('\nusb_preflight: dibatalkan.', flush=True)
             return 130
