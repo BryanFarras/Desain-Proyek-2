@@ -248,9 +248,10 @@ timed out, ESP32 telemetry stopped.
     trees, logs, and evaluation output are ignored.
 - [x] **Make all tests / lint green**
   - Fixed every `flake8` (max 99) and `pydocstyle` error.
-  - `colcon test --packages-select AREbot_description` → **0 failures**
-    (copyright skipped).
-  - Still to add: smoke tests for config loading / launch descriptions.
+  - Added `test/test_config.py` smoke tests (YAML parsing, wheel geometry
+    parity, mapper mode, Nav2 servers, default map config).
+  - `colcon test --packages-select AREbot_description` → **17 tests, 0
+    failures** (copyright skipped).
 - [ ] **Make simulation reproducible**
   - Install/document Gazebo Fortress + `ros_gz_sim` / `ros_gz_bridge`.
   - Decide sim/real geometry parity: sim uses `0.0325 m / 0.22 m`, real uses
