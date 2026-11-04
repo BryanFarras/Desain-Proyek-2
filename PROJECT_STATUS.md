@@ -37,8 +37,11 @@ Current hardware state (probed on 4 Nov, after the LiDAR was reconnected):
 
 Last confirmed working autonomous run: **27 October 2026**
 (`bt_navigator` logged 4 successful goals, 1 failed).
-Last robot launch attempt: **31 October 2026** — RViz crashed, LiDAR later
-timed out, ESP32 telemetry stopped.
+Last full robot launch attempt before the fixes: **31 October 2026** — RViz
+crashed, LiDAR later timed out, ESP32 telemetry stopped.
+Latest hardware check: **4 November 2026** — headless SLAM stack started after
+auto-detecting the ports; `/scan` and `/wheel_telemetry` were live and the
+ESP32 connected on `/dev/ttyUSB1`.
 
 ---
 
@@ -273,13 +276,14 @@ timed out, ESP32 telemetry stopped.
 
 ## 5. Suggested execution order
 
-1. Connect LiDAR, verify both USB ports, install udev rules
-2. 60-minute hardware stability run
-3. Odometry calibration
-4. End-to-end acceptance test (5 goals)
-5. Nav2 tuning verification (TF/CPU)
-6. Root README + repo hygiene + tests
-7. Simulation parity and evaluation baseline
+1. ✅ Connect LiDAR and verify both USB ports (done 4 Nov)
+2. Install the udev rules (needs `sudo`; file is ready)
+3. 60-minute hardware stability run
+4. Odometry calibration
+5. End-to-end acceptance test (5 goals)
+6. Nav2 tuning verification (TF/CPU)
+7. ✅ Root README + repo hygiene + tests (done 4 Nov)
+8. Simulation parity and evaluation baseline
 
 ---
 
