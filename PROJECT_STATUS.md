@@ -157,6 +157,10 @@ ESP32 connected on `/dev/ttyUSB1`.
   `__pycache__` directories.
 - Fixed all package `flake8` (max 99) and `pydocstyle` errors. `colcon test`
   now reports **0 failures** (copyright test still skipped).
+- Added `tools/install_dependencies.sh` (one-shot Gazebo Fortress +
+  `ros_gz` + `gz_ros2_control` + rosdep + udev + build). Updated `package.xml`
+  with the Gazebo/ROS deps. **The script has not been run yet because system
+  installation needs the user's sudo password.**
 
 ---
 
@@ -175,7 +179,7 @@ ESP32 connected on `/dev/ttyUSB1`.
 | Hardware link | ✅ Verified | LiDAR `/scan` + ESP32 `/wheel_telemetry` on 4 Nov |
 | Long-run USB stability | 🔴 Not fixed | LiDAR/ESP32 dropouts observed on 31 Oct |
 | End-to-end acceptance | 🔴 Not run | Tool and procedure are ready |
-| Simulation (Gazebo) | 🔴 Not runnable here | `ros_gz_sim`, `ros_gz_bridge`, Gazebo not installed |
+| Simulation (Gazebo) | 🟡 Installer ready | `ros_gz_sim`, `ros_gz_bridge`, Gazebo not installed yet; `tools/install_dependencies.sh` installs them |
 | Evaluation baseline | 🟡 Partial | `map_eval` works; `live_eval` baseline is from 14 Oct |
 | Documentation | ✅ Good | Root README, calibration, udev, status, eval docs |
 | Tests / lint | ✅ Green | `flake8` + `pydocstyle` pass; copyright skipped |

@@ -42,18 +42,32 @@ ROS nodes (`AREbot_description` package):
 | `cmd_vel_relay` | `/cmd_vel` | `/diff_drive_controller/cmd_vel_unstamped` (Gazebo) |
 | `teleop_twist_keyboard` | keyboard | `/cmd_vel` |
 
-## 3. Build
+## 3. Build / install
 
-Prerequisites: ROS 2 Humble, `nav2_bringup`, `slam_toolbox`, `xacro`,
-`python3-serial`, `python3-yaml`. RViz is optional (it crashes on the headless
-Pi). Gazebo is optional and currently not installed on this machine.
+Prerequisites: ROS 2 Humble on Ubuntu 22.04. The one-shot installer adds
+Gazebo Fortress, `ros_gz_sim` / `ros_gz_bridge`, `gz_ros2_control`,
+`robot_localization`, the ROS/Python dependencies, and the udev rules:
 
 ```bash
 cd ~/desproRover_ws
+./tools/install_dependencies.sh        # asks for sudo when needed
+source install/setup.bash
+```
+
+Manual equivalent:
+
+```bash
+cd ~/desproRover_ws
+sudo apt-get install -y ros-humble-ros-gz ros-humble-gz-ros2-control \
+    ros-humble-robot-localization ignition-fortress
+sudo rosdep init && rosdep update
 rosdep install --from-paths src --ignore-src -r -y
 colcon build --packages-select AREbot_description ldlidar_stl_ros2
 source install/setup.bash
 ```
+
+RViz is optional (it crashes on the headless Pi). Gazebo is optional for real
+robot work, but is required for `live_eval.py` and the simulated bringup.
 
 Rebuild after changing launch files, config, or Python sources.
 
