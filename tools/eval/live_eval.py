@@ -28,6 +28,7 @@ import time
 from datetime import datetime
 
 import rclpy
+from rclpy.executors import ExternalShutdownException
 from rclpy.node import Node
 from rclpy.qos import QoSProfile, ReliabilityPolicy, HistoryPolicy
 from rclpy.parameter import Parameter
@@ -220,7 +221,8 @@ def summarize(node):
             return sum(math.hypot(b[f"{k}_x"] - a[f"{k}_x"], b[f"{k}_y"] - a[f"{k}_y"])
                        for a, b in zip(gt_rows, gt_rows[1:]))
 
-        d_gt = traveled("gt"); d_odom = traveled("odom")
+        d_gt = traveled("gt")
+        d_odom = traveled("odom")
         print(f"  sampel            : {len(gt_rows)}")
         print(f"  RMSE posisi       : {rmse*100:.2f} cm")
         print(f"  error maks        : {max(e)*100:.2f} cm")
@@ -301,13 +303,14 @@ def main():
                           f"gt={node.gt.count} samples={len(node.samples)}", flush=True)
                 if args.durasi > 0 and (time.time() - t0) > args.durasi:
                     break
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, ExternalShutdownException):
         pass
     finally:
         summarize(node)
         print(f"\nCSV : {csv_path}")
         node.destroy_node()
-        rclpy.shutdown()
+        if rclpy.ok():
+            rclpy.shutdown()
 
 
 if __name__ == "__main__":

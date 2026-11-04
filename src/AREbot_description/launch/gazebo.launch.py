@@ -38,6 +38,9 @@ def generate_launch_description():
 
     gui_arg = DeclareLaunchArgument("gui", default_value="true", description="Start Gazebo GUI")
     gui = LaunchConfiguration("gui")
+    rviz_arg = DeclareLaunchArgument(
+        "rviz", default_value="false", description="Start RViz")
+    rviz = LaunchConfiguration("rviz")
 
     # ==============================================================
     # 3. NODE GAZEBO SIMULATION
@@ -145,7 +148,8 @@ def generate_launch_description():
         name='rviz2',
         arguments=['-d', rviz_config_file],
         parameters=[{'use_sim_time': True}],
-        output='screen'
+        output='screen',
+        condition=IfCondition(rviz),
     )
 
     imu_broadcaster_spawner = Node(
@@ -164,6 +168,7 @@ def generate_launch_description():
     return LaunchDescription([
         set_gz_resource_path,
         gui_arg,
+        rviz_arg,
         gazebo,
         gazebo_headless,
         robot_state_publisher,

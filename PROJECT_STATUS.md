@@ -159,8 +159,19 @@ ESP32 connected on `/dev/ttyUSB1`.
   now reports **0 failures** (copyright test still skipped).
 - Added `tools/install_dependencies.sh` (one-shot Gazebo Fortress +
   `ros_gz` + `gz_ros2_control` + rosdep + udev + build). Updated `package.xml`
-  with the Gazebo/ROS deps. **The script has not been run yet because system
-  installation needs the user's sudo password.**
+  with the Gazebo/ROS deps.
+- System installation completed by the user: `ros_gz_sim`, `ros_gz_bridge`,
+  `gz_ros2_control`, `robot_localization`, Gazebo Fortress 6.18, and rosdep are
+  present; `rosdep check` reports all dependencies satisfied.
+- Headless Gazebo verified: `/clock`, `/scan`, `/diff_drive_controller/odom`,
+  IMU and all controllers; a short `/cmd_vel` test moved the robot
+  (`odom x ≈ 0.119 m` after ~4 s at 0.10 m/s).
+- `live_eval.py` produced a fresh baseline: RMSE 7.86 cm, max 8.32 cm,
+  distance error 2.23% over a short simulated run.
+- Fixed `gazebo.launch.py` to start RViz only with `rviz:=true` (default
+  false), so `gui:=false` is truly headless.
+- **Still not installed:** `/etc/udev/rules.d/99-arebot-usb.rules` (needs
+  sudo). Auto-detection works without it.
 
 ---
 
@@ -179,8 +190,8 @@ ESP32 connected on `/dev/ttyUSB1`.
 | Hardware link | ✅ Verified | LiDAR `/scan` + ESP32 `/wheel_telemetry` on 4 Nov |
 | Long-run USB stability | 🔴 Not fixed | LiDAR/ESP32 dropouts observed on 31 Oct |
 | End-to-end acceptance | 🔴 Not run | Tool and procedure are ready |
-| Simulation (Gazebo) | 🟡 Installer ready | `ros_gz_sim`, `ros_gz_bridge`, Gazebo not installed yet; `tools/install_dependencies.sh` installs them |
-| Evaluation baseline | 🟡 Partial | `map_eval` works; `live_eval` baseline is from 14 Oct |
+| Simulation (Gazebo) | ✅ Verified headless | Fortress 6.18 + `ros_gz` + `gz_ros2_control`; `/clock`, `/scan`, odom, IMU and a short drive work |
+| Evaluation baseline | ✅ Updated | `live_eval` 4 Nov (sim): RMSE 7.86 cm, distance error 2.23% over a short 0.1 m/s run |
 | Documentation | ✅ Good | Root README, calibration, udev, status, eval docs |
 | Tests / lint | ✅ Green | `flake8` + `pydocstyle` pass; copyright skipped |
 | Version control | ✅ Done | `git init`, `.gitignore`, initial commit `9878cff` |
@@ -260,9 +271,14 @@ ESP32 connected on `/dev/ttyUSB1`.
   - `colcon test --packages-select AREbot_description` → **17 tests, 0
     failures** (copyright skipped).
 - [ ] **Make simulation reproducible**
-  - Install/document Gazebo Fortress + `ros_gz_sim` / `ros_gz_bridge`.
-  - Decide sim/real geometry parity: sim uses `0.0325 m / 0.22 m`, real uses
-    `0.0335 m / 0.20 m`.
+  - [x] Install/document Gazebo Fortress + `ros_gz_sim` / `ros_gz_bridge`
+    (`tools/install_dependencies.sh`); headless sim verified 4 Nov.
+  - [ ] Decide sim/real geometry parity: sim uses `0.0325 m / 0.22 m`, real
+    uses `0.0335 m / 0.20 m`.
+  - [x] `gazebo.launch.py` no longer starts RViz when headless (`rviz:=false`
+    default); a short `/cmd_vel` drive moved the simulated robot.
+  - [x] `live_eval.py` now handles Ctrl-C/external shutdown without a
+    double-shutdown traceback.
 
 ### P2 — Improvements
 
@@ -371,3 +387,12 @@ colcon test-result --verbose
   - `gnome-terminal ... exit code 1`
 - Beluga build failure: `log/build_2026-10-27_00-56-41/beluga/stderr.log`
   - `Could not find a package configuration file provided by "range-v3"`
+- Gazebo headless (4 Nov): `/tmp/arebot_gazebo.log`
+  - `Gazebo Sim, version 6.18.0`
+  - controllers: `diff_drive_controller`, `imu_sensor_broadcaster`,
+    `joint_state_broadcaster` all `active`
+  - `/clock`, `/scan`, `/diff_drive_controller/odom` publishing
+- Simulated drive (4 Nov): `/tmp/arebot_gazebo_drive.log`
+  - odom `x = 0.119 m` after a 0.10 m/s command
+- Live evaluation (4 Nov): `tools/eval/out/live_eval_20261104_220707.csv`
+  - 2535 samples, RMSE 7.86 cm, distance error 2.23%

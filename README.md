@@ -148,14 +148,19 @@ The launch:
 The default map is `map_digilab_save.yaml` (see `config/realbot_nav_setup.yaml`).
 Send goals from RViz/Nav2 on another machine, or run the acceptance test below.
 
-### 5.4 Gazebo (optional)
+### 5.4 Gazebo
 
 ```bash
 ros2 launch AREbot_description gazebo.launch.py gui:=false
+# optional: gui:=true rviz:=true
 ```
 
-Requires Gazebo Fortress with `ros_gz_sim` and `ros_gz_bridge`. It is not
-installed in this workspace yet, so the simulation is currently unverified.
+Gazebo Fortress, `ros_gz_sim`, `ros_gz_bridge`, and `gz_ros2_control` are
+installed by `tools/install_dependencies.sh`. The headless simulation is
+verified: `/clock`, `/scan`, `/diff_drive_controller/odom`, IMU, and all three
+controllers start, and publishing `/cmd_vel` moves the simulated robot.
+RViz is off by default; enable it explicitly with `rviz:=true`.
+
 The simulated robot uses slightly different geometry (`0.0325 m` wheel radius,
 `0.22 m` separation) from the real robot (`0.0335 m`, `0.20 m`).
 

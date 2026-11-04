@@ -102,7 +102,10 @@ def bbox_of(points):
 
 def grid_of(pts, bbox, res, margin=0.1):
     x0, y0, x1, y1 = bbox
-    x0 -= margin; y0 -= margin; x1 += margin; y1 += margin
+    x0 -= margin
+    y0 -= margin
+    x1 += margin
+    y1 += margin
     nx = int(math.ceil((x1 - x0) / res))
     ny = int(math.ceil((y1 - y0) / res))
     g = np.zeros((ny, nx), dtype=bool)
@@ -177,8 +180,10 @@ def main():
     x0, y0, r = grid_of(np.zeros((1, 2)), bbox, res)[1]
     for rect in rects:
         rx0, ry0, rx1, ry1 = rect_points(rect)
-        i0 = int((rx0 - x0) / r); i1 = int((rx1 - x0) / r)
-        j0 = int((ry0 - y0) / r); j1 = int((ry1 - y0) / r)
+        i0 = int((rx0 - x0) / r)
+        i1 = int((rx1 - x0) / r)
+        j0 = int((ry0 - y0) / r)
+        j1 = int((ry1 - y0) / r)
         g_gt[max(j0, 0):j1 + 1, max(i0, 0):i1 + 1] = True
     inter = np.logical_and(g_slam, g_gt).sum()
     union = np.logical_or(g_slam, g_gt).sum()
