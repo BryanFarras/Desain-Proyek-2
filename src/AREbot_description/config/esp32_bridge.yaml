@@ -1,0 +1,29 @@
+esp32_bridge:
+  ros__parameters:
+    # Prefer the stable udev name. If it does not exist, auto-detect probes
+    # the CP2102 adapters and picks the one that sends DATA: telemetry (the
+    # LiDAR shares the same VID:PID, so VID:PID alone is not enough).
+    port: /dev/arebot_esp32
+    baud: 115200
+    auto_detect: true
+    device_vid_pid: ["10c4:ea60"]   # CP2102 USB-serial
+    reconnect_interval: 2.0
+    data_timeout: 5.0
+
+    # ROS topics
+    cmd_vel_topic: /cmd_vel
+    telemetry_topic: /wheel_telemetry
+
+    # Robot geometry (must match wheel_odometry.yaml so cmd_vel, odom and the
+    # physical wheel track use the same model)
+    wheel_radius: 0.0335
+    wheel_separation: 0.20
+    max_rpm: 95.0
+    invert_left: false
+    invert_right: false
+    # ESP32 Motor A / encoder A is the RIGHT wheel (Motor B is left).
+    motor_a_is_right: true
+
+    # Safety / timing
+    cmd_timeout: 0.5
+    serial_poll_hz: 100.0

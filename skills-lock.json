@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "skills": {
+    "ros2-development": {
+      "source": "arpitg1304/robotics-agent-skills",
+      "sourceType": "github",
+      "skillPath": "skills/ros2/SKILL.md",
+      "computedHash": "278a97b229c3bb68f9b0ca07cecb9b06fd1b9d79b9b903881c07de71b95197e5"
+    },
+    "ros2-robotics": {
+      "source": "omer-metin/skills-for-antigravity",
+      "sourceType": "github",
+      "skillPath": "skills/ros2-robotics/SKILL.md",
+      "computedHash": "1538202a07efdc14482af45531f891cec5b29784d902f1b31075196e3953c694"
+    }
+  }
+}

@@ -1,0 +1,18 @@
+# Stable names for the AREbot ESP32 and LD06 LiDAR on the current Pi wiring.
+#
+# Verified on 4 Nov 2026:
+#   /dev/ttyUSB0 = LiDAR on USB port path 1-1.1
+#   /dev/ttyUSB1 = ESP32 on USB port path 1-1.2
+#
+# These KERNELS values describe PHYSICAL USB ports. If you move a cable to a
+# different port, update the values (see 99-arebot-usb.rules.example) or let
+# the launch files auto-detect the devices instead.
+#
+# Install:
+#   sudo cp udev/99-arebot-usb.rules /etc/udev/rules.d/99-arebot-usb.rules
+#   sudo udevadm control --reload-rules
+#   sudo udevadm trigger
+#   ls -l /dev/arebot_esp32 /dev/arebot_lidar
+
+SUBSYSTEM=="tty", KERNELS=="1-1.1", SYMLINK+="arebot_lidar", MODE="0660", GROUP="dialout"
+SUBSYSTEM=="tty", KERNELS=="1-1.2", SYMLINK+="arebot_esp32", MODE="0660", GROUP="dialout"

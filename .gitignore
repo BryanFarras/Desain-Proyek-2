@@ -1,0 +1,30 @@
+# ROS 2 build artifacts
+build/
+install/
+log/
+
+# Python
+__pycache__/
+*.py[cod]
+.pytest_cache/
+
+# Editor / OS
+.vscode/
+.idea/
+*.swp
+.DS_Store
+
+# Large SLAM serialization artifacts (posegraph + serialized map)
+*_serialize.data
+*_serialize.posegraph
+*.posegraph
+
+# Generated evaluation output
+tools/eval/out/*.csv
+tools/eval/out/*.json
+
+# Backups / archives
+backups/*.tar.gz
+
+# Local map save output (keep the tracked deliverable maps at the repo root)
+maps/

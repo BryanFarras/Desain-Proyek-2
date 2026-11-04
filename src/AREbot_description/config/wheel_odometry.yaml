@@ -1,0 +1,33 @@
+wheel_odometry:
+  ros__parameters:
+    telemetry_topic: /wheel_telemetry
+    odom_topic: /odom
+    odom_frame: odom
+    base_frame: base_footprint
+
+    # Robot geometry (real measured values)
+    wheel_radius: 0.0335        # 67 mm diameter
+    wheel_separation: 0.20      # 20 cm
+
+    # Encoder scale. Motor: JGA25-370 280 RPM, 11 pulses per motor rev.
+    # NOT yet measured on the real robot (an older note mentioned 374 =
+    # 11 x 34). Calibrate with tools/calibrate_odometry.py and update both
+    # wheels; see docs/CALIBRATION.md.
+    ticks_per_rev_left: 232.0
+    ticks_per_rev_right: 232.0
+    left_tick_sign: 1.0
+    right_tick_sign: 1.0
+
+    # Motor A / encoder A is the RIGHT wheel.
+    motor_a_is_right: true
+
+    publish_tf: true
+    publish_rate: 25.0
+
+    # Ignore tick jumps larger than this (ESP32 reset / reconnect).
+    max_tick_jump: 1000.0
+
+    # Don't integrate encoder ticks until a non-zero /cmd_vel arrives, so the
+    # ESP32 boot / serial-open twitch does not shift the odometry origin.
+    arm_on_cmd_vel: true
+    cmd_vel_topic: /cmd_vel

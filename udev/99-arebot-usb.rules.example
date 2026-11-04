@@ -1,0 +1,29 @@
+# Template: stable names for the AREbot ESP32 and LD06 LiDAR.
+#
+# Both devices use a CP2102 USB-serial chip with the SAME VID:PID, so they
+# cannot be told apart by VID/PID. Match them by their physical USB port path
+# instead.
+#
+# 1. Find the port path of each device (plug one in at a time if needed):
+#      udevadm info -a -n /dev/ttyUSB0 | grep -E 'KERNELS|looking at'
+#      udevadm info -a -n /dev/ttyUSB1 | grep -E 'KERNELS|looking at'
+#    Look for the "KERNELS==..." value on the USB device itself, e.g. 1-1.2.
+#
+# 2. Replace the two KERNELS values below with your own paths.
+#
+# 3. Install:
+#      sudo cp udev/99-arebot-usb.rules.example \
+#          /etc/udev/rules.d/99-arebot-usb.rules
+#      sudo udevadm control --reload-rules
+#      sudo udevadm trigger
+#      ls -l /dev/arebot_esp32 /dev/arebot_lidar
+#
+# 4. Launch with the stable names:
+#      ros2 launch AREbot_description main_realbot_nav_setup.launch.py \
+#          esp32_port:=/dev/arebot_esp32 lidar_port:=/dev/arebot_lidar
+#
+# NOTE: 1-1.2 / 1-1.3 are EXAMPLES. They depend on which USB port you use on
+# the Pi. A rule with the wrong KERNELS value simply never matches.
+
+SUBSYSTEM=="tty", KERNELS=="1-1.2", SYMLINK+="arebot_esp32", MODE="0660", GROUP="dialout"
+SUBSYSTEM=="tty", KERNELS=="1-1.3", SYMLINK+="arebot_lidar", MODE="0660", GROUP="dialout"
