@@ -38,11 +38,16 @@ LIDAR_ALIAS = '/dev/arebot_lidar'
 
 
 def _port_has(port, baud, needle, timeout=PROBE_TIME):
+    ser = None
     try:
-        ser = serial.Serial(port, baud, timeout=0.2)
-        # Do not reset the ESP32 just because we opened its port.
+        # Pre-configure DTR/RTS before opening to avoid pulsing CP2102 auto-reset
+        ser = serial.Serial()
+        ser.port = port
+        ser.baudrate = baud
+        ser.timeout = 0.2
         ser.dtr = False
         ser.rts = False
+        ser.open()
     except Exception:
         return False
     buf = b''
@@ -53,6 +58,13 @@ def _port_has(port, baud, needle, timeout=PROBE_TIME):
             if waiting:
                 buf += ser.read(waiting)
             if needle in buf:
+                # If ESP32 is recognized, immediately ensure it is stopped
+                if needle == b'DATA:' or needle == b'Sistem PID':
+                    try:
+                        ser.write(b'berhenti\n')
+                        ser.flush()
+                    except Exception:
+                        pass
                 return True
             time.sleep(0.05)
     except Exception:
@@ -61,7 +73,8 @@ def _port_has(port, baud, needle, timeout=PROBE_TIME):
         return needle in buf
     finally:
         try:
-            ser.close()
+            if ser is not None:
+                ser.close()
         except Exception:
             pass
     return needle in buf
@@ -143,7 +156,9 @@ def main(argv=None):
           f'LiDAR ({lidar_port or "auto"})...', flush=True)
     while True:
         try:
-            if 'auto' in (args.esp32_port, args.lidar_port):
+            if 'auto' in (args.esp32_port, args.lidar_port) or (esp32_port and esp32_port == lidar_port):
+                args.esp32_port = 'auto'
+                args.lidar_port = 'auto'
                 esp32_port, lidar_port = _resolve_ports(args)
             esp = classify(esp32_port) if esp32_port else None
             lidar = classify(lidar_port) if lidar_port else None

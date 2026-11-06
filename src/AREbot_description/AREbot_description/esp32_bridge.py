@@ -18,6 +18,8 @@ Run:
 """
 import math
 import os
+import signal
+import sys
 import time
 
 import rclpy
@@ -66,7 +68,8 @@ class Esp32Bridge(Node):
         self.last_connect_attempt = 0.0
         self.last_data_time = None
         self.last_cmd_time = None
-        self.stop_sent = False
+        self.stop_sent = True
+        self.last_stop_ping_time = 0.0
         self.no_device_logged = False
 
         self.telemetry_pub = self.create_publisher(
@@ -166,10 +169,14 @@ class Esp32Bridge(Node):
                 self.no_device_logged = True
             return False
         try:
-            # Open normally, then lower DTR/RTS so the ESP32 is not reset.
-            self.ser = serial.Serial(port, self.baud, timeout=0)
+            # Pre-configure DTR/RTS False before opening to avoid CP2102 reset pulse
+            self.ser = serial.Serial()
+            self.ser.port = port
+            self.ser.baudrate = self.baud
+            self.ser.timeout = 0
             self.ser.dtr = False
             self.ser.rts = False
+            self.ser.open()
         except Exception as exc:  # noqa: BLE001
             self.ser = None
             self.get_logger().error(
@@ -180,9 +187,12 @@ class Esp32Bridge(Node):
         self.rx_buf = b''
         self.last_data_time = time.monotonic()
         self.get_logger().info(f'ESP32 terdeteksi dan tersambung di {port}')
-        # Kick the ESP32 so its blocking readStringUntil() returns immediately
-        # and it starts streaming DATA: lines right away.
-        self._send('berhenti\n')
+        # Ensure ESP32 motors are immediately stopped upon connection
+        self.stop_sent = True
+        self.last_stop_ping_time = time.monotonic()
+        for _ in range(3):
+            self._send('berhenti\n')
+            time.sleep(0.02)
         return True
 
     def _close(self):
@@ -225,6 +235,12 @@ class Esp32Bridge(Node):
                 and now - self.last_cmd_time > self.cmd_timeout):
             self._send('berhenti\n')
             self.stop_sent = True
+            self.last_stop_ping_time = now
+
+        # Periodic safety ping: keep sending 'berhenti\n' at 2 Hz when stopped
+        if self.stop_sent and (now - self.last_stop_ping_time > 0.4):
+            self._send('berhenti\n')
+            self.last_stop_ping_time = now
 
     def _process_buffer(self):
         while b'\n' in self.rx_buf:
@@ -270,14 +286,17 @@ class Esp32Bridge(Node):
         rpm_right = max(-self.max_rpm, min(self.max_rpm, rpm_right))
 
         self.last_cmd_time = time.monotonic()
-        self.stop_sent = False
 
         if abs(v) < 1e-4 and abs(w) < 1e-4:
+            self.stop_sent = True
+            self.last_stop_ping_time = time.monotonic()
             self._send('berhenti\n')
         elif self.motor_a_is_right:
+            self.stop_sent = False
             # ESP32 Motor A = right wheel, Motor B = left wheel.
             self._send(f'speed({rpm_right:.2f},{rpm_left:.2f})\n')
         else:
+            self.stop_sent = False
             self._send(f'speed({rpm_left:.2f},{rpm_right:.2f})\n')
 
     def _send(self, text):
@@ -292,20 +311,38 @@ class Esp32Bridge(Node):
     def shutdown(self):
         if self.ser is not None and self.ser.is_open:
             self.stop_sent = True
-            self._send('berhenti\n')
-            try:
-                self.ser.flush()
-            except Exception:  # noqa: BLE001
-                pass
+            for _ in range(5):
+                try:
+                    self.ser.write(b'berhenti\n')
+                    self.ser.flush()
+                except Exception:
+                    pass
+                time.sleep(0.02)
         self._close()
 
 
 def main(args=None):
     rclpy.init(args=args)
     node = Esp32Bridge()
+
+    def _sig_handler(signum, frame):
+        try:
+            node.get_logger().warn(
+                f'Menerima sinyal {signum}, mematikan motor robot...')
+            node.shutdown()
+            node.destroy_node()
+        except Exception:
+            pass
+        if rclpy.ok():
+            rclpy.try_shutdown()
+        sys.exit(0)
+
+    signal.signal(signal.SIGINT, _sig_handler)
+    signal.signal(signal.SIGTERM, _sig_handler)
+
     try:
         rclpy.spin(node)
-    except KeyboardInterrupt:
+    except (KeyboardInterrupt, SystemExit):
         pass
     finally:
         node.shutdown()

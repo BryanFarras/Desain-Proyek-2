@@ -49,8 +49,17 @@ def _default_ports():
     if os.path.exists(ESP32_ALIAS) and os.path.exists(LIDAR_ALIAS):
         return ESP32_ALIAS, LIDAR_ALIAS
     found = discover_ports()
-    return (found.get('esp32', '/dev/ttyUSB0'),
-            found.get('lidar', '/dev/ttyUSB1'))
+    esp = found.get('esp32')
+    lid = found.get('lidar')
+    if esp and lid and esp != lid:
+        return esp, lid
+    if esp and not lid:
+        other = '/dev/ttyUSB0' if esp == '/dev/ttyUSB1' else '/dev/ttyUSB1'
+        return esp, other
+    if lid and not esp:
+        other = '/dev/ttyUSB0' if lid == '/dev/ttyUSB1' else '/dev/ttyUSB1'
+        return other, lid
+    return '/dev/ttyUSB0', '/dev/ttyUSB1'
 
 
 def _load_setup(share_dir):
