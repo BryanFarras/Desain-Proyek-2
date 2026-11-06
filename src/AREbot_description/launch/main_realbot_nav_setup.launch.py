@@ -225,6 +225,13 @@ def generate_launch_description():
         }],
     )
 
+    dashboard_telemetry = Node(
+        package='AREbot_description',
+        executable='dashboard_telemetry',
+        name='dashboard_telemetry',
+        output='screen',
+    )
+
     start_after_preflight = [
         robot_state_publisher,
         lidar,
@@ -235,6 +242,7 @@ def generate_launch_description():
         lifecycle_manager_localization,
         navigation,
         auto_localize,
+        dashboard_telemetry,
     ]
 
     def _on_preflight_exit(event, _context):

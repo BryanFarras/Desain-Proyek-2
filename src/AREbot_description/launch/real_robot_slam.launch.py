@@ -135,12 +135,20 @@ def generate_launch_description():
         parameters=[{'use_sim_time': False}],
     )
 
+    dashboard_telemetry = Node(
+        package='AREbot_description',
+        executable='dashboard_telemetry',
+        name='dashboard_telemetry',
+        output='screen',
+    )
+
     start_after_preflight = [
         robot_state_publisher,
         lidar,
         esp32_bridge,
         wheel_odometry,
         slam_toolbox,
+        dashboard_telemetry,
         rviz,
     ]
 

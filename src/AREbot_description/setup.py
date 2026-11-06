@@ -43,6 +43,7 @@ setup(
             'esp32_bridge = AREbot_description.esp32_bridge:main',
             'wheel_odometry = AREbot_description.wheel_odometry:main',
             'usb_preflight = AREbot_description.usb_preflight:main',
+            'dashboard_telemetry = AREbot_description.dashboard_telemetry_node:main',
         ],
     },
 )

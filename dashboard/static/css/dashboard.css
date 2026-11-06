@@ -1,0 +1,656 @@
+/* AER Rover Operations Dashboard Stylesheet */
+:root {
+    --bg-base: #090b10;
+    --bg-card: #131722;
+    --bg-card-hover: #1a2030;
+    --border: #232a3b;
+    --border-light: #2e384d;
+    --text-main: #f1f5f9;
+    --text-muted: #94a3b8;
+    --text-dim: #64748b;
+    --accent: #38bdf8;
+    --accent-glow: rgba(56, 189, 248, 0.25);
+    --success: #10b981;
+    --warning: #f59e0b;
+    --danger: #ef4444;
+    --danger-glow: rgba(239, 68, 68, 0.4);
+    --radius-sm: 6px;
+    --radius: 10px;
+    --radius-lg: 14px;
+    --font-mono: 'JetBrains Mono', 'Fira Code', Menlo, Consolas, monospace;
+}
+
+* {
+    box-sizing: border-box;
+    margin: 0;
+    padding: 0;
+}
+
+body {
+    background: var(--bg-base);
+    color: var(--text-main);
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+    font-size: 14px;
+    line-height: 1.5;
+    overflow-x: hidden;
+}
+
+/* ==================== HEADER ==================== */
+.dashboard-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 12px 20px;
+    background: #0f131c;
+    border-bottom: 1px solid var(--border);
+    position: sticky;
+    top: 0;
+    z-index: 100;
+}
+
+.brand-section {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+
+.brand-logo {
+    width: 32px;
+    height: 32px;
+    background: linear-gradient(135deg, #0284c7, #38bdf8);
+    border-radius: var(--radius-sm);
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-weight: 800;
+    color: #fff;
+    box-shadow: 0 0 12px var(--accent-glow);
+}
+
+.brand-title {
+    font-size: 16px;
+    font-weight: 700;
+    letter-spacing: 0.5px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.brand-sub {
+    font-size: 11px;
+    color: var(--text-muted);
+}
+
+.header-status-strip {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+
+.status-pill {
+    font-size: 11px;
+    font-weight: 600;
+    padding: 4px 10px;
+    border-radius: 20px;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    letter-spacing: 0.3px;
+    text-transform: uppercase;
+}
+
+.pill-online {
+    background: rgba(16, 185, 129, 0.15);
+    color: var(--success);
+    border: 1px solid rgba(16, 185, 129, 0.4);
+}
+
+.pill-offline {
+    background: rgba(239, 68, 68, 0.15);
+    color: var(--danger);
+    border: 1px solid rgba(239, 68, 68, 0.4);
+}
+
+.pill-idle {
+    background: rgba(245, 158, 11, 0.15);
+    color: var(--warning);
+    border: 1px solid rgba(245, 158, 11, 0.4);
+}
+
+.pill-mode {
+    background: #1e293b;
+    color: var(--accent);
+    border: 1px solid #334155;
+}
+
+.pill-estop {
+    background: var(--danger) !important;
+    color: #fff !important;
+    animation: estop-pulse 1s infinite alternate;
+}
+
+@keyframes estop-pulse {
+    from { box-shadow: 0 0 8px var(--danger-glow); }
+    to { box-shadow: 0 0 20px var(--danger-glow); }
+}
+
+/* Big Emergency Stop Button in Header */
+.btn-estop-main {
+    background: linear-gradient(180deg, #ef4444, #b91c1c);
+    color: #ffffff;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.8px;
+    padding: 8px 18px;
+    border-radius: var(--radius-sm);
+    border: 2px solid #f87171;
+    cursor: pointer;
+    box-shadow: 0 4px 14px var(--danger-glow);
+    transition: all 0.15s ease;
+}
+
+.btn-estop-main:hover {
+    background: linear-gradient(180deg, #f87171, #dc2626);
+    transform: translateY(-1px);
+}
+
+.btn-estop-main:active {
+    transform: translateY(1px);
+}
+
+/* ==================== SUB-BAR & TABS ==================== */
+.sub-bar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 8px 20px;
+    background: #111520;
+    border-bottom: 1px solid var(--border);
+}
+
+.nav-tabs {
+    display: flex;
+    gap: 6px;
+}
+
+.nav-tab-btn {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--text-muted);
+    font-size: 13px;
+    font-weight: 600;
+    padding: 7px 14px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    transition: all 0.2s;
+}
+
+.nav-tab-btn:hover {
+    color: var(--text-main);
+    background: rgba(255, 255, 255, 0.04);
+}
+
+.nav-tab-btn.active {
+    color: #ffffff;
+    background: var(--accent);
+    border-color: var(--accent);
+    box-shadow: 0 2px 8px var(--accent-glow);
+}
+
+.mode-selector {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    background: #181e2b;
+    padding: 3px;
+    border-radius: var(--radius-sm);
+    border: 1px solid var(--border);
+}
+
+.mode-toggle-btn {
+    background: transparent;
+    border: none;
+    color: var(--text-muted);
+    font-size: 11px;
+    font-weight: 700;
+    padding: 4px 10px;
+    border-radius: 4px;
+    cursor: pointer;
+    transition: all 0.15s;
+}
+
+.mode-toggle-btn.active {
+    background: var(--accent);
+    color: #000;
+}
+
+/* ==================== CONTENT LAYOUT ==================== */
+.dashboard-container {
+    max-width: 1400px;
+    margin: 0 auto;
+    padding: 16px 20px;
+}
+
+.tab-pane {
+    display: none;
+}
+
+.tab-pane.active {
+    display: block;
+}
+
+/* ==================== QUICK STATS STRIP ==================== */
+.stats-strip {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 16px;
+}
+
+.stat-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px 16px;
+    display: flex;
+    flex-direction: column;
+}
+
+.stat-label {
+    font-size: 11px;
+    color: var(--text-muted);
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    margin-bottom: 4px;
+}
+
+.stat-val {
+    font-size: 18px;
+    font-weight: 700;
+    font-family: var(--font-mono);
+    color: var(--text-main);
+}
+
+.stat-sub {
+    font-size: 11px;
+    color: var(--text-dim);
+    margin-top: 2px;
+}
+
+/* ==================== TAB 1: RVIZ VIEWPORT ==================== */
+.rviz-wrapper {
+    background: #0c0e14;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    position: relative;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.4);
+}
+
+.rviz-toolbar {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: #121622;
+    border-bottom: 1px solid var(--border);
+    flex-wrap: wrap;
+    gap: 10px;
+}
+
+.toolbar-group {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.tool-btn {
+    background: #1c2230;
+    border: 1px solid var(--border-light);
+    color: var(--text-main);
+    font-size: 12px;
+    font-weight: 600;
+    padding: 5px 10px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    transition: all 0.15s;
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+}
+
+.tool-btn:hover {
+    background: #252d3d;
+    border-color: var(--accent);
+}
+
+.tool-btn.active {
+    background: var(--accent);
+    color: #000;
+    border-color: var(--accent);
+}
+
+.layer-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
+    font-size: 12px;
+    color: var(--text-muted);
+    cursor: pointer;
+    user-select: none;
+}
+
+.layer-toggle input {
+    cursor: pointer;
+}
+
+.canvas-container {
+    width: 100%;
+    height: 520px;
+    position: relative;
+    cursor: grab;
+    overflow: hidden;
+}
+
+.canvas-container:active {
+    cursor: grabbing;
+}
+
+#rvizCanvas {
+    display: block;
+    width: 100%;
+    height: 100%;
+}
+
+.rviz-hud-strip {
+    position: absolute;
+    bottom: 8px;
+    left: 12px;
+    background: rgba(15, 20, 30, 0.85);
+    padding: 4px 10px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: #94a3b8;
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    pointer-events: none;
+}
+
+/* ==================== TAB 2: HITL MANUAL DRIVE ==================== */
+.hitl-grid {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+@media (max-width: 900px) {
+    .hitl-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+.hitl-panel {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 20px;
+}
+
+.panel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 16px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid var(--border);
+}
+
+.panel-title {
+    font-size: 15px;
+    font-weight: 700;
+    letter-spacing: 0.3px;
+}
+
+.joystick-section {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    padding: 10px 0;
+}
+
+#joystickCanvas {
+    cursor: crosshair;
+    touch-action: none;
+    border-radius: 50%;
+    background: #0f131c;
+}
+
+.dpad-container {
+    display: grid;
+    grid-template-columns: repeat(3, 68px);
+    grid-template-rows: repeat(3, 56px);
+    gap: 8px;
+    justify-content: center;
+    margin: 20px 0;
+}
+
+.dpad-btn {
+    background: #1b212f;
+    border: 1px solid var(--border-light);
+    color: var(--text-main);
+    font-size: 18px;
+    font-weight: bold;
+    border-radius: var(--radius);
+    cursor: pointer;
+    transition: all 0.1s;
+    user-select: none;
+}
+
+.dpad-btn:hover {
+    background: #283145;
+    border-color: var(--accent);
+}
+
+.dpad-btn:active {
+    background: var(--accent);
+    color: #000;
+}
+
+.slider-group {
+    margin-bottom: 16px;
+}
+
+.slider-header {
+    display: flex;
+    justify-content: space-between;
+    font-size: 12px;
+    color: var(--text-muted);
+    margin-bottom: 6px;
+}
+
+.slider-control {
+    width: 100%;
+    accent-color: var(--accent);
+    cursor: pointer;
+}
+
+.key-guide-box {
+    background: #0e121a;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 12px;
+    margin-top: 16px;
+}
+
+.key-badge {
+    background: #1e293b;
+    border: 1px solid #334155;
+    padding: 2px 6px;
+    border-radius: 4px;
+    font-family: var(--font-mono);
+    font-size: 11px;
+    color: var(--accent);
+}
+
+/* ==================== TAB 3: COMMAND CENTER ==================== */
+.commands-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 14px;
+    margin-bottom: 20px;
+}
+
+.cmd-card {
+    background: var(--bg-card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 16px;
+    display: flex;
+    flex-direction: column;
+    justify-content: space-between;
+    transition: transform 0.15s, border-color 0.15s;
+}
+
+.cmd-card:hover {
+    border-color: var(--accent);
+    transform: translateY(-2px);
+}
+
+.cmd-card-top {
+    margin-bottom: 12px;
+}
+
+.cmd-card-title {
+    font-size: 14px;
+    font-weight: 700;
+    margin-bottom: 4px;
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.cmd-card-desc {
+    font-size: 12px;
+    color: var(--text-muted);
+}
+
+.btn-cmd-action {
+    background: #1e2638;
+    color: var(--accent);
+    border: 1px solid rgba(56, 189, 248, 0.3);
+    font-size: 12px;
+    font-weight: 700;
+    padding: 8px 12px;
+    border-radius: var(--radius-sm);
+    cursor: pointer;
+    text-align: center;
+    transition: all 0.15s;
+}
+
+.btn-cmd-action:hover {
+    background: var(--accent);
+    color: #000;
+}
+
+.btn-cmd-danger {
+    color: var(--danger);
+    border-color: rgba(239, 68, 68, 0.4);
+}
+
+.btn-cmd-danger:hover {
+    background: var(--danger);
+    color: #fff;
+}
+
+/* Terminal Console */
+.terminal-card {
+    background: #0a0d14;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+}
+
+.terminal-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 16px;
+    background: #111520;
+    border-bottom: 1px solid var(--border);
+}
+
+.terminal-body {
+    height: 260px;
+    overflow-y: auto;
+    padding: 12px 16px;
+    font-family: var(--font-mono);
+    font-size: 12px;
+    line-height: 1.6;
+    background: #090c12;
+}
+
+.term-line {
+    word-break: break-all;
+    margin-bottom: 2px;
+}
+
+.term-time { color: var(--text-dim); }
+.term-lvl { font-weight: bold; }
+.log-info { color: #94a3b8; }
+.log-proc { color: #38bdf8; }
+.log-warn { color: #f59e0b; }
+.log-error, .log-alert { color: #ef4444; font-weight: bold; }
+.log-sys { color: #10b981; }
+
+.custom-cmd-bar {
+    display: flex;
+    gap: 8px;
+    margin-top: 14px;
+}
+
+.custom-cmd-input {
+    flex: 1;
+    background: #111622;
+    border: 1px solid var(--border);
+    color: #fff;
+    padding: 8px 14px;
+    border-radius: var(--radius-sm);
+    font-family: var(--font-mono);
+    font-size: 13px;
+}
+
+.custom-cmd-input:focus {
+    outline: none;
+    border-color: var(--accent);
+}
+
+/* ==================== TOAST NOTIFICATIONS ==================== */
+.toast {
+    position: fixed;
+    bottom: 24px;
+    right: 24px;
+    padding: 10px 18px;
+    border-radius: var(--radius-sm);
+    font-size: 13px;
+    font-weight: 600;
+    color: #fff;
+    opacity: 0;
+    transform: translateY(12px);
+    transition: all 0.25s ease;
+    z-index: 9999;
+    box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5);
+}
+
+.toast.show {
+    opacity: 1;
+    transform: translateY(0);
+}
+
+.toast-info { background: #0284c7; }
+.toast-success { background: #059669; }
+.toast-warn { background: #d97706; }
+.toast-error { background: #dc2626; }

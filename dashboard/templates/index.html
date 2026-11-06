@@ -1,0 +1,380 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AER Rover - Web Operations & RViz2 Dashboard</title>
+    <link rel="stylesheet" href="/static/css/dashboard.css">
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;600;700&display=swap" rel="stylesheet">
+</head>
+<body>
+    <!-- ==================== HEADER ==================== -->
+    <header class="dashboard-header">
+        <div class="brand-section">
+            <div class="brand-logo">AER</div>
+            <div>
+                <div class="brand-title">
+                    <span>Autonomous Evacuation Rover</span>
+                    <span class="status-pill pill-mode" id="badgeRoverMode">STANDBY</span>
+                </div>
+                <div class="brand-sub">DESPRO 2 - Kelompok 9 | Raspberry Pi 4 (ROS 2 Humble)</div>
+            </div>
+        </div>
+
+        <div class="header-status-strip">
+            <span class="status-pill pill-idle" id="badgeRosLink">LINK PENDING</span>
+            <span class="status-pill pill-offline" id="badgeEsp32">ESP32 NO DATA</span>
+            <span class="status-pill pill-offline" id="badgeLidar">LIDAR NO DATA</span>
+            <button class="btn-estop-main" id="btnEmergencyStop" title="Shortcut: ESCAPE">
+                🚨 EMERGENCY STOP
+            </button>
+        </div>
+    </header>
+
+    <!-- ==================== SUB-BAR & TABS ==================== -->
+    <nav class="sub-bar">
+        <div class="nav-tabs">
+            <button class="nav-tab-btn active" data-tab="tab-rviz">
+                <span>🗺️</span> RViz2 Map
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-hitl">
+                <span>🎮</span> HITL Manual Drive
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-commands">
+                <span>⚡</span> Command Center
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-diagnostics">
+                <span>📊</span> Diagnostics
+            </button>
+            <button class="nav-tab-btn" data-tab="tab-terminal">
+                <span>📋</span> Live Terminal
+            </button>
+        </div>
+
+        <div style="display: flex; align-items: center; gap: 12px;">
+            <div class="active-proc-chip idle" id="dispActiveProcess">
+                No background ROS task active
+            </div>
+            <div class="mode-selector">
+                <button class="mode-toggle-btn active" data-mode="STANDBY">STANDBY</button>
+                <button class="mode-toggle-btn" data-mode="MANUAL">MANUAL (HITL)</button>
+                <button class="mode-toggle-btn" data-mode="AUTONOMOUS">AUTONOMOUS</button>
+            </div>
+        </div>
+    </nav>
+
+    <!-- ==================== MAIN CONTENT ==================== -->
+    <main class="dashboard-container">
+        <!-- Quick Telemetry Strip -->
+        <section class="stats-strip">
+            <div class="stat-card">
+                <span class="stat-label">Position (X, Y)</span>
+                <span class="stat-val"><span id="valPoseX">0.00 m</span>, <span id="valPoseY">0.00 m</span></span>
+                <span class="stat-sub" id="valPoseFrame">Frame: odom</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Heading (Yaw)</span>
+                <span class="stat-val" id="valPoseYaw">0.0°</span>
+                <span class="stat-sub">Relative to origin</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Velocity (Lin / Ang)</span>
+                <span class="stat-val"><span id="valSpeedLinear">0.00 m/s</span></span>
+                <span class="stat-sub" id="valSpeedAngular">0.00 rad/s</span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">LiDAR Obstacle Distance</span>
+                <span class="stat-val" id="valLidarFront">-- m</span>
+                <span class="stat-sub">Min distance: <span id="valLidarMin">-- m</span></span>
+            </div>
+            <div class="stat-card">
+                <span class="stat-label">Raspberry Pi CPU</span>
+                <span class="stat-val" id="valCpuTemp">-- °C</span>
+                <span class="stat-sub">CPU: <span id="valCpuUsage">--%</span> | RAM: <span id="valRamUsage">--%</span></span>
+            </div>
+        </section>
+
+        <!-- TAB 1: RVIZ2 MAP VIEWPORT -->
+        <div class="tab-pane active" id="tab-rviz">
+            <div class="rviz-wrapper">
+                <div class="rviz-toolbar">
+                    <div class="toolbar-group">
+                        <button class="tool-btn" id="btnNavGoalTool" title="Click and drag on map to send Nav2 2D Goal Pose">
+                            <span>🎯</span> 2D Nav Goal
+                        </button>
+                        <button class="tool-btn" id="btnCenterRobot" title="Shortcut: C">
+                            <span>⌖</span> Center Rover
+                        </button>
+                        <button class="tool-btn" id="btnResetView" title="Shortcut: R">
+                            <span>↺</span> Reset View
+                        </button>
+                    </div>
+
+                    <div class="toolbar-group">
+                        <label class="layer-toggle">
+                            <input type="checkbox" id="chkLayerLaser" checked> LiDAR Scan
+                        </label>
+                        <label class="layer-toggle">
+                            <input type="checkbox" id="chkLayerTrail" checked> Motion Trail
+                        </label>
+                        <label class="layer-toggle">
+                            <input type="checkbox" id="chkLayerPlan" checked> Nav2 Path
+                        </label>
+                    </div>
+                </div>
+
+                <div class="canvas-container">
+                    <canvas id="rvizCanvas"></canvas>
+                    <div class="rviz-hud-strip" id="rvizHud">
+                        X: 0.00 m | Y: 0.00 m | Zoom: 40 px/m
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: HITL MANUAL DRIVE -->
+        <div class="tab-pane" id="tab-hitl">
+            <div class="hitl-grid">
+                <!-- Left: Virtual Joystick -->
+                <div class="hitl-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">🕹️ Virtual Joystick (Continuous Control)</div>
+                        <span class="status-pill pill-online">TOUCH & MOUSE</span>
+                    </div>
+
+                    <div class="joystick-section">
+                        <canvas id="joystickCanvas" width="220" height="220"></canvas>
+                    </div>
+
+                    <div style="display: flex; justify-content: space-around; margin-top: 14px;">
+                        <div>
+                            <span class="stat-label">Cmd Linear</span>
+                            <div class="stat-val" id="dispCmdLinear">0.00 m/s</div>
+                        </div>
+                        <div>
+                            <span class="stat-label">Cmd Angular</span>
+                            <div class="stat-val" id="dispCmdAngular">0.00 rad/s</div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Right: D-Pad, Sliders, Keyboard Guide -->
+                <div class="hitl-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">🎮 Directional D-Pad & Speed Limits</div>
+                        <button class="tool-btn" id="btnCoastStop">Coast Stop [Space]</button>
+                    </div>
+
+                    <!-- D-Pad Buttons -->
+                    <div class="dpad-container">
+                        <button class="dpad-btn" id="dpadSpinLeft" title="Spin Left [Q]">↺</button>
+                        <button class="dpad-btn" id="dpadForward" title="Forward [W]">▲</button>
+                        <button class="dpad-btn" id="dpadSpinRight" title="Spin Right [E]">↻</button>
+                        <button class="dpad-btn" id="dpadTurnLeft" title="Turn Left [A]">◀</button>
+                        <button class="dpad-btn" id="btnActiveBrake" title="Active Brake [B]" style="color: var(--danger); font-size: 13px;">BRAKE</button>
+                        <button class="dpad-btn" id="dpadTurnRight" title="Turn Right [D]">▶</button>
+                        <div></div>
+                        <button class="dpad-btn" id="dpadBackward" title="Backward [S]">▼</button>
+                        <div></div>
+                    </div>
+
+                    <!-- Speed Sliders -->
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <span>Max Linear Speed</span>
+                            <span id="valMaxLinear" style="font-weight: 700; color: var(--accent);">0.25 m/s</span>
+                        </div>
+                        <input type="range" class="slider-control" id="sliderMaxLinear" min="0.05" max="0.50" step="0.05" value="0.25">
+                    </div>
+
+                    <div class="slider-group">
+                        <div class="slider-header">
+                            <span>Max Angular Speed</span>
+                            <span id="valMaxAngular" style="font-weight: 700; color: var(--accent);">0.80 rad/s</span>
+                        </div>
+                        <input type="range" class="slider-control" id="sliderMaxAngular" min="0.20" max="1.50" step="0.10" value="0.80">
+                    </div>
+
+                    <!-- Keyboard Guide -->
+                    <div class="key-guide-box">
+                        <div style="font-size: 11px; font-weight: 700; margin-bottom: 6px; color: var(--text-muted); text-transform: uppercase;">
+                            Keyboard Hotkeys (Active in MANUAL mode)
+                        </div>
+                        <div style="display: flex; gap: 8px; flex-wrap: wrap;">
+                            <span><span class="key-badge">W</span>/<span class="key-badge">S</span> Forward/Back</span>
+                            <span><span class="key-badge">A</span>/<span class="key-badge">D</span> Steer</span>
+                            <span><span class="key-badge">Q</span>/<span class="key-badge">E</span> Spin</span>
+                            <span><span class="key-badge">Space</span> Coast</span>
+                            <span><span class="key-badge">B</span> Brake</span>
+                            <span><span class="key-badge">ESC</span> E-STOP</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 3: COMMAND CENTER -->
+        <div class="tab-pane" id="tab-commands">
+            <div class="commands-grid">
+                <!-- Action 1: SLAM -->
+                <div class="cmd-card">
+                    <div class="cmd-card-top">
+                        <div class="cmd-card-title">🗺️ Real Robot SLAM</div>
+                        <div class="cmd-card-desc">Launch LD06 LiDAR, ESP32 bridge, and SLAM Toolbox (headless).</div>
+                    </div>
+                    <button class="btn-cmd-action" data-ros-cmd="start_slam">Launch SLAM Stack</button>
+                </div>
+
+                <!-- Action 2: Nav2 & AMCL -->
+                <div class="cmd-card">
+                    <div class="cmd-card-top">
+                        <div class="cmd-card-title">🧭 Nav2 & AMCL Localization</div>
+                        <div class="cmd-card-desc">Bringup map server, AMCL particle filter, and Nav2 planner stack.</div>
+                    </div>
+                    <button class="btn-cmd-action" data-ros-cmd="start_nav2">Launch Nav2 Stack</button>
+                </div>
+
+                <!-- Action 3: Telemetry Node -->
+                <div class="cmd-card">
+                    <div class="cmd-card-top">
+                        <div class="cmd-card-title">📡 Dashboard Telemetry Node</div>
+                        <div class="cmd-card-desc">Publish unified /rover/dashboard_telemetry topic independently.</div>
+                    </div>
+                    <button class="btn-cmd-action" data-ros-cmd="start_telemetry">Start Telemetry Node</button>
+                </div>
+
+                <!-- Action 4: Stop Stack -->
+                <div class="cmd-card">
+                    <div class="cmd-card-top">
+                        <div class="cmd-card-title">🛑 Stop Background Stack</div>
+                        <div class="cmd-card-desc">Safely terminate active launch processes and release serial ports.</div>
+                    </div>
+                    <button class="btn-cmd-action btn-cmd-danger" id="btnStopRunningProcess">Stop Active Task</button>
+                </div>
+
+                <!-- Action 5: USB Preflight -->
+                <div class="cmd-card">
+                    <div class="cmd-card-top">
+                        <div class="cmd-card-title">🔌 USB Preflight Diagnostic</div>
+                        <div class="cmd-card-desc">Auto-detect ESP32 (115200) vs LD06 LiDAR (230400) serial ports.</div>
+                    </div>
+                    <button class="btn-cmd-action" data-ros-cmd="usb_preflight">Run Preflight Check</button>
+                </div>
+
+                <!-- Action 6: Auto Localize -->
+                <div class="cmd-card">
+                    <div class="cmd-card-top">
+                        <div class="cmd-card-title">🔄 Auto Localize Spin</div>
+                        <div class="cmd-card-desc">Execute in-place spins to disperse and converge AMCL particles.</div>
+                    </div>
+                    <button class="btn-cmd-action" data-ros-cmd="auto_localize">Trigger Auto Localize</button>
+                </div>
+
+                <!-- Action 7: Save Map -->
+                <div class="cmd-card">
+                    <div class="cmd-card-top">
+                        <div class="cmd-card-title">💾 Save Map to Disk</div>
+                        <div class="cmd-card-desc">Export current SLAM occupancy grid to .yaml and .pgm files.</div>
+                    </div>
+                    <button class="btn-cmd-action" data-ros-cmd="save_map">Save Current Map</button>
+                </div>
+
+                <!-- Action 8: List Nodes -->
+                <div class="cmd-card">
+                    <div class="cmd-card-top">
+                        <div class="cmd-card-title">📋 ROS 2 Inspection</div>
+                        <div class="cmd-card-desc">Inspect active ROS 2 nodes and live topic graph.</div>
+                    </div>
+                    <div style="display: flex; gap: 6px;">
+                        <button class="btn-cmd-action" style="flex: 1;" data-ros-cmd="list_nodes">Nodes</button>
+                        <button class="btn-cmd-action" style="flex: 1;" data-ros-cmd="list_topics">Topics</button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Terminal Output Section -->
+            <div class="terminal-card">
+                <div class="terminal-header">
+                    <span style="font-weight: 700; font-family: var(--font-mono); font-size: 12px; color: var(--accent);">
+                        Terminal Console Output
+                    </span>
+                    <button class="tool-btn" id="btnClearTerminal" style="font-size: 11px;">Clear Log</button>
+                </div>
+                <div class="terminal-body" id="terminalOutput">
+                    <div class="term-line log-sys"><span class="term-time">[INIT]</span> Operations Dashboard initialized. Ready for commands.</div>
+                </div>
+            </div>
+
+            <!-- Custom Command Input -->
+            <form id="formCustomCommand" class="custom-cmd-bar">
+                <input type="text" id="inputCustomCmd" class="custom-cmd-input" placeholder="Enter custom ROS 2 command (e.g. ros2 topic echo /rover/dashboard_telemetry --once)...">
+                <button type="submit" class="tool-btn" style="padding: 8px 18px; background: var(--accent); color: #000;">Execute</button>
+            </form>
+        </div>
+
+        <!-- TAB 4: DIAGNOSTICS -->
+        <div class="tab-pane" id="tab-diagnostics">
+            <div class="hitl-grid">
+                <div class="hitl-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">⚙️ Wheel Telemetry & Motors</div>
+                        <span class="status-pill pill-online">TB6612FNG</span>
+                    </div>
+                    <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 14px;">
+                        <div class="stat-card">
+                            <span class="stat-label">Left Wheel RPM</span>
+                            <div class="stat-val" id="valWheelRpmL">0.0 RPM</div>
+                            <span class="stat-sub">Motor B</span>
+                        </div>
+                        <div class="stat-card">
+                            <span class="stat-label">Right Wheel RPM</span>
+                            <div class="stat-val" id="valWheelRpmR">0.0 RPM</div>
+                            <span class="stat-sub">Motor A</span>
+                        </div>
+                    </div>
+                    <div style="margin-top: 14px; font-family: var(--font-mono); font-size: 12px; color: var(--text-muted);">
+                        Encoder Ticks: <span id="valWheelTicks" style="color: var(--text-main);">L: 0 | R: 0</span>
+                    </div>
+                </div>
+
+                <div class="hitl-panel">
+                    <div class="panel-header">
+                        <div class="panel-title">📡 ROS 2 Topic Architecture</div>
+                        <span class="status-pill pill-mode">DDS</span>
+                    </div>
+                    <ul style="list-style: none; font-family: var(--font-mono); font-size: 12px; line-height: 2;">
+                        <li><span style="color: var(--accent);">Pub:</span> /rover/dashboard_telemetry (std_msgs/String JSON)</li>
+                        <li><span style="color: var(--accent);">Pub:</span> /cmd_vel (geometry_msgs/Twist)</li>
+                        <li><span style="color: var(--accent);">Pub:</span> /goal_pose (geometry_msgs/PoseStamped)</li>
+                        <li><span style="color: var(--accent);">Pub:</span> /emergency_stop (std_msgs/Bool)</li>
+                        <li><span style="color: var(--warning);">Sub:</span> /map (nav_msgs/OccupancyGrid)</li>
+                        <li><span style="color: var(--warning);">Sub:</span> /scan (sensor_msgs/LaserScan)</li>
+                        <li><span style="color: var(--warning);">Sub:</span> /odom (nav_msgs/Odometry)</li>
+                    </ul>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 5: LIVE TERMINAL -->
+        <div class="tab-pane" id="tab-terminal">
+            <div class="terminal-card" style="height: 540px; display: flex; flex-direction: column;">
+                <div class="terminal-header">
+                    <span style="font-weight: 700; font-family: var(--font-mono); font-size: 13px; color: var(--accent);">
+                        Live System & ROS 2 Logs
+                    </span>
+                    <button class="tool-btn" onclick="document.getElementById('btnClearTerminal').click()">Clear</button>
+                </div>
+                <div class="terminal-body" id="fullTerminalOutput" style="flex: 1; height: 100%;">
+                    <!-- Rendered identically to terminalOutput -->
+                </div>
+            </div>
+        </div>
+    </main>
+
+    <!-- Scripts -->
+    <script src="/static/js/rviz_display.js"></script>
+    <script src="/static/js/dashboard.js"></script>
+</body>
+</html>
