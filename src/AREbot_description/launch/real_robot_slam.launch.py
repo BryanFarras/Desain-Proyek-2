@@ -1,3 +1,4 @@
+import json
 import os
 
 import xacro
@@ -169,7 +170,51 @@ def generate_launch_description():
                     f'{event.returncode}; not starting the hardware stack.')),
                 Shutdown(reason='USB pre-flight failed'),
             ]
-        return start_after_preflight
+
+        # Read dynamically verified ports from /tmp/arebot_ports.json
+        ports = {}
+        try:
+            with open('/tmp/arebot_ports.json', 'r') as f:
+                ports = json.load(f)
+        except Exception:
+            pass
+
+        resolved_esp32 = ports.get('esp32', default_esp32_port)
+        resolved_lidar = ports.get('lidar', default_lidar_port)
+
+        node_lidar = Node(
+            package='ldlidar_stl_ros2',
+            executable='ldlidar_stl_ros2_node',
+            name='LD06',
+            output='screen',
+            parameters=[{
+                'product_name': 'LDLiDAR_LD06',
+                'topic_name': 'scan',
+                'frame_id': 'laser',
+                'port_name': resolved_lidar,
+                'port_baudrate': 230400,
+                'laser_scan_dir': True,
+                'enable_angle_crop_func': False,
+            }],
+        )
+
+        node_esp32 = Node(
+            package='AREbot_description',
+            executable='esp32_bridge',
+            name='esp32_bridge',
+            output='screen',
+            parameters=[{'port': resolved_esp32}],
+        )
+
+        return [
+            robot_state_publisher,
+            node_lidar,
+            node_esp32,
+            wheel_odometry,
+            slam_toolbox,
+            dashboard_telemetry,
+            rviz,
+        ]
 
     ld = LaunchDescription()
     ld.add_action(gui_arg)

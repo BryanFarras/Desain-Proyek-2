@@ -20,6 +20,7 @@ the actual wiring (``ttyUSB0``/``ttyUSB1`` order depends on plug order).
 """
 import argparse
 import glob
+import json
 import os
 import time
 
@@ -151,40 +152,45 @@ def _resolve_ports(args):
 
 def main(argv=None):
     args = _parse_args(argv)
-    esp32_port, lidar_port = _resolve_ports(args)
-    print(f'usb_preflight: memeriksa USB ESP32 ({esp32_port or "auto"}) & '
-          f'LiDAR ({lidar_port or "auto"})...', flush=True)
+    print('usb_preflight: Memulai pemindaian otomatis USB ESP32 dan LiDAR...', flush=True)
+
     while True:
         try:
-            if 'auto' in (args.esp32_port, args.lidar_port) or (esp32_port and esp32_port == lidar_port):
-                args.esp32_port = 'auto'
-                args.lidar_port = 'auto'
-                esp32_port, lidar_port = _resolve_ports(args)
-            esp = classify(esp32_port) if esp32_port else None
-            lidar = classify(lidar_port) if lidar_port else None
+            # Jika user memberikan argumen spesifik selain 'auto' dan tidak sama
+            if args.esp32_port != 'auto' and args.lidar_port != 'auto' and args.esp32_port != args.lidar_port:
+                esp_port = args.esp32_port if classify(args.esp32_port) == 'esp32' else None
+                lidar_port = args.lidar_port if classify(args.lidar_port) == 'lidar' else None
+            else:
+                # Mode otomatis: scan semua port USB yang ada secara dinamis
+                found = discover_ports()
+                esp_port = found.get('esp32')
+                lidar_port = found.get('lidar')
+
+            if esp_port and lidar_port:
+                print(f'[OK] USB Terverifikasi: ESP32={esp_port}, LiDAR={lidar_port}', flush=True)
+                # Simpan hasil deteksi ke file sementara untuk dipakai launch file
+                try:
+                    with open('/tmp/arebot_ports.json', 'w') as f:
+                        json.dump({'esp32': esp_port, 'lidar': lidar_port}, f)
+                except Exception:
+                    pass
+                return 0
+            elif lidar_port and not esp_port:
+                print(f'[MENUNGGU] LiDAR terdeteksi di {lidar_port}, tetapi ESP32 BELUM TERDETEKSI. '
+                      'Pastikan kabel USB ESP32 sudah tercolok...', flush=True)
+            elif esp_port and not lidar_port:
+                print(f'[MENUNGGU] ESP32 terdeteksi di {esp_port}, tetapi LiDAR BELUM TERDETEKSI. '
+                      'Pastikan kabel USB LiDAR sudah tercolok...', flush=True)
+            else:
+                print('[MENUNGGU] Tidak ada perangkat USB terdeteksi. '
+                      'Silakan colokkan kabel USB ESP32 dan LiDAR...', flush=True)
+
         except KeyboardInterrupt:
             print('\nusb_preflight: dibatalkan.', flush=True)
             return 130
-        except Exception as exc:  # noqa: BLE001 - never crash the launch
-            print(f'usb_preflight: error saat memeriksa port ({exc}); '
-                  'mencoba lagi...', flush=True)
-            time.sleep(CHECK_INTERVAL)
-            continue
+        except Exception as exc:  # noqa: BLE001
+            print(f'usb_preflight: error pemindaian ({exc}); mencoba lagi...', flush=True)
 
-        if esp == 'esp32' and lidar == 'lidar':
-            print(f'USB OK: {esp32_port} = ESP32, {lidar_port} = LiDAR',
-                  flush=True)
-            return 0
-        if esp == 'lidar' and lidar == 'esp32':
-            print(f'PORT TERTUKAR: {esp32_port} = LiDAR, '
-                  f'{lidar_port} = ESP32. Tukar kabel USB, menunggu...',
-                  flush=True)
-        elif esp is None or lidar is None:
-            print(f'USB belum terdeteksi ({esp32_port}={esp}, '
-                  f'{lidar_port}={lidar}). Menunggu...', flush=True)
-        else:
-            print(f'Konfigurasi USB belum benar ({esp32_port}={esp}, '
-                  f'{lidar_port}={lidar}). Menunggu...', flush=True)
         time.sleep(CHECK_INTERVAL)
     return 0
 
