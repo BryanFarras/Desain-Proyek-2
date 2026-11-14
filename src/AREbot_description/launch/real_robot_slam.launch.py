@@ -96,30 +96,6 @@ def generate_launch_description():
                      'use_sim_time': False}],
     )
 
-    lidar = Node(
-        package='ldlidar_stl_ros2',
-        executable='ldlidar_stl_ros2_node',
-        name='LD06',
-        output='screen',
-        parameters=[{
-            'product_name': 'LDLiDAR_LD06',
-            'topic_name': 'scan',
-            'frame_id': 'laser',
-            'port_name': lidar_port,
-            'port_baudrate': 230400,
-            'laser_scan_dir': True,
-            'enable_angle_crop_func': False,
-        }],
-    )
-
-    esp32_bridge = Node(
-        package='AREbot_description',
-        executable='esp32_bridge',
-        name='esp32_bridge',
-        output='screen',
-        parameters=[{'port': esp32_port}],
-    )
-
     wheel_odometry = Node(
         package='AREbot_description',
         executable='wheel_odometry',
@@ -151,16 +127,6 @@ def generate_launch_description():
         name='dashboard_telemetry',
         output='screen',
     )
-
-    start_after_preflight = [
-        robot_state_publisher,
-        lidar,
-        esp32_bridge,
-        wheel_odometry,
-        slam_toolbox,
-        dashboard_telemetry,
-        rviz,
-    ]
 
     def _on_preflight_exit(event, _context):
         if event.returncode != 0:

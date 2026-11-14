@@ -119,8 +119,12 @@ def generate_launch_description():
     declare_lidar_port = DeclareLaunchArgument(
         'lidar_port', default_value=default_lidar_port,
         description='Serial device of the LD06 LiDAR')
+    declare_auto_localize = DeclareLaunchArgument(
+        'auto_localize', default_value='false',
+        description='Spin and localize on startup (disabled by default)')
     esp32_port = LaunchConfiguration('esp32_port')
     lidar_port = LaunchConfiguration('lidar_port')
+    auto_localize_arg = LaunchConfiguration('auto_localize')
 
     # --- safe boot: only start the rest once USB mapping is correct ----------
     usb_preflight = Node(
@@ -142,30 +146,6 @@ def generate_launch_description():
         output='screen',
         parameters=[{'robot_description': robot_description,
                      'use_sim_time': False}],
-    )
-
-    lidar = Node(
-        package='ldlidar_stl_ros2',
-        executable='ldlidar_stl_ros2_node',
-        name='LD06',
-        output='screen',
-        parameters=[{
-            'product_name': 'LDLiDAR_LD06',
-            'topic_name': 'scan',
-            'frame_id': 'laser',
-            'port_name': lidar_port,
-            'port_baudrate': 230400,
-            'laser_scan_dir': True,
-            'enable_angle_crop_func': False,
-        }],
-    )
-
-    esp32_bridge = Node(
-        package='AREbot_description',
-        executable='esp32_bridge',
-        name='esp32_bridge',
-        output='screen',
-        parameters=[{'port': esp32_port}],
     )
 
     wheel_odometry = Node(
@@ -242,19 +222,6 @@ def generate_launch_description():
         output='screen',
     )
 
-    start_after_preflight = [
-        robot_state_publisher,
-        lidar,
-        esp32_bridge,
-        wheel_odometry,
-        map_server,
-        amcl,
-        lifecycle_manager_localization,
-        navigation,
-        auto_localize,
-        dashboard_telemetry,
-    ]
-
     def _on_preflight_exit(event, _context):
         if event.returncode != 0:
             return [
@@ -298,7 +265,14 @@ def generate_launch_description():
             parameters=[{'port': resolved_esp32}],
         )
 
-        return [
+        enable_auto_localize = False
+        try:
+            val = _context.perform_substitution(auto_localize_arg)
+            enable_auto_localize = str(val).lower() in ('true', '1')
+        except Exception:
+            pass
+
+        nodes = [
             robot_state_publisher,
             node_lidar,
             node_esp32,
@@ -307,14 +281,18 @@ def generate_launch_description():
             amcl,
             lifecycle_manager_localization,
             navigation,
-            auto_localize,
             dashboard_telemetry,
         ]
+        if enable_auto_localize:
+            nodes.append(auto_localize)
+
+        return nodes
 
     ld = LaunchDescription()
     ld.add_action(declare_map)
     ld.add_action(declare_esp32_port)
     ld.add_action(declare_lidar_port)
+    ld.add_action(declare_auto_localize)
     ld.add_action(usb_preflight)
     ld.add_action(RegisterEventHandler(
         OnProcessExit(

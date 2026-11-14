@@ -74,7 +74,7 @@ class RVizDisplay {
             const mouseX = e.clientX - rect.left;
             const mouseY = e.clientY - rect.top;
 
-            if (this.currentTool === 'nav_goal') {
+            if (this.currentTool === 'nav_goal' || this.currentTool === 'initial_pose') {
                 const worldPos = this.canvasToWorld(mouseX, mouseY);
                 this.goalStart = worldPos;
                 this.goalCurrent = worldPos;
@@ -96,7 +96,7 @@ class RVizDisplay {
                 this.hud.innerText = `X: ${worldPos.x.toFixed(2)} m | Y: ${worldPos.y.toFixed(2)} m | Zoom: ${(this.scale).toFixed(0)} px/m`;
             }
 
-            if (this.currentTool === 'nav_goal' && this.goalStart) {
+            if ((this.currentTool === 'nav_goal' || this.currentTool === 'initial_pose') && this.goalStart) {
                 this.goalCurrent = worldPos;
             } else if (this.isDragging) {
                 this.panX = mouseX - this.dragStartX;
@@ -106,14 +106,18 @@ class RVizDisplay {
 
         // Mouse Up
         window.addEventListener('mouseup', (e) => {
-            if (this.currentTool === 'nav_goal' && this.goalStart && this.goalCurrent) {
+            if ((this.currentTool === 'nav_goal' || this.currentTool === 'initial_pose') && this.goalStart && this.goalCurrent) {
                 const dx = this.goalCurrent.x - this.goalStart.x;
                 const dy = this.goalCurrent.y - this.goalStart.y;
                 let yaw = Math.atan2(dy, dx);
                 if (Math.hypot(dx, dy) < 0.15) {
                     yaw = (this.telemetry && this.telemetry.pose) ? this.telemetry.pose.yaw : 0.0;
                 }
-                this._dispatchGoal(this.goalStart.x, this.goalStart.y, yaw);
+                if (this.currentTool === 'nav_goal') {
+                    this._dispatchGoal(this.goalStart.x, this.goalStart.y, yaw);
+                } else if (this.currentTool === 'initial_pose') {
+                    this._dispatchInitialPose(this.goalStart.x, this.goalStart.y, yaw);
+                }
                 this.goalStart = null;
                 this.goalCurrent = null;
                 this.setTool('pan');
@@ -185,16 +189,25 @@ class RVizDisplay {
     setTool(tool) {
         this.currentTool = tool;
         if (this.canvas) {
-            this.canvas.style.cursor = tool === 'nav_goal' ? 'crosshair' : 'grab';
+            this.canvas.style.cursor = (tool === 'nav_goal' || tool === 'initial_pose') ? 'crosshair' : 'grab';
         }
         const btn = document.getElementById('btnNavGoalTool');
         if (btn) {
             btn.classList.toggle('active', tool === 'nav_goal');
         }
+        const btnPose = document.getElementById('btnNavInitialPoseTool');
+        if (btnPose) {
+            btnPose.classList.toggle('active', tool === 'initial_pose');
+        }
     }
 
     _dispatchGoal(x, y, yaw) {
         const event = new CustomEvent('navgoal-selected', { detail: { x, y, yaw } });
+        window.dispatchEvent(event);
+    }
+
+    _dispatchInitialPose(x, y, yaw) {
+        const event = new CustomEvent('initialpose-selected', { detail: { x, y, yaw } });
         window.dispatchEvent(event);
     }
 

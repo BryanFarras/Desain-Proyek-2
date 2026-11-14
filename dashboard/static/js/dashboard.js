@@ -86,6 +86,15 @@ function setupRVizToolbar() {
         });
     }
 
+    const btnPose = document.getElementById('btnNavInitialPoseTool');
+    if (btnPose) {
+        btnPose.addEventListener('click', () => {
+            if (!rviz) return;
+            const newTool = rviz.currentTool === 'initial_pose' ? 'pan' : 'initial_pose';
+            rviz.setTool(newTool);
+        });
+    }
+
     // Layer Toggles
     const toggleLaser = document.getElementById('chkLayerLaser');
     if (toggleLaser) toggleLaser.addEventListener('change', (e) => rviz.layers.laser = e.target.checked);
@@ -95,6 +104,25 @@ function setupRVizToolbar() {
 
     const togglePlan = document.getElementById('chkLayerPlan');
     if (togglePlan) togglePlan.addEventListener('change', (e) => rviz.layers.plan = e.target.checked);
+
+    // Initial Pose selected event from RViz (2D Pose Estimate)
+    window.addEventListener('initialpose-selected', (e) => {
+        const { x, y, yaw } = e.detail;
+        fetch('/api/initialpose', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ x, y, yaw }),
+        })
+        .then(r => r.json())
+        .then(data => {
+            if (data.success) {
+                showToast(`2D Pose Estimate set: (${x.toFixed(2)}, ${y.toFixed(2)})`, 'success');
+            } else {
+                showToast(`Pose failed: ${data.error}`, 'error');
+            }
+        })
+        .catch(err => showToast(`Pose error: ${err}`, 'error'));
+    });
 
     // Goal selected event from RViz
     window.addEventListener('navgoal-selected', (e) => {
@@ -142,7 +170,7 @@ function setupHITLControls() {
     // Virtual Joystick Canvas
     setupVirtualJoystick();
 
-    // D-Pad Buttons
+    // D-Pad Buttons (Hold to drive, release to stop)
     const dpadMap = {
         'dpadForward':   { lin: 1.0, ang: 0.0 },
         'dpadBackward':  { lin: -1.0, ang: 0.0 },
@@ -156,13 +184,31 @@ function setupHITLControls() {
         const btn = document.getElementById(id);
         if (!btn) return;
         const config = dpadMap[id];
+        let dpadTimer = null;
 
         const startMove = () => {
             if (currentMode !== 'MANUAL' || isEstop) return;
             sendCmdVel(config.lin * maxLinearSpeed, config.ang * maxAngularSpeed);
+            if (!dpadTimer) {
+                dpadTimer = setInterval(() => {
+                    if (currentMode === 'MANUAL' && !isEstop) {
+                        sendCmdVel(config.lin * maxLinearSpeed, config.ang * maxAngularSpeed);
+                    } else {
+                        stopMove();
+                    }
+                }, 100);
+            }
         };
+
         const stopMove = () => {
-            if (currentMode === 'MANUAL') sendCmdVel(0.0, 0.0);
+            if (dpadTimer) {
+                clearInterval(dpadTimer);
+                dpadTimer = null;
+            }
+            if (currentMode === 'MANUAL') {
+                pendingCmd = null;
+                sendCmdVel(0.0, 0.0);
+            }
         };
 
         btn.addEventListener('mousedown', startMove);
@@ -174,10 +220,10 @@ function setupHITLControls() {
 
     // Coast & Brake Buttons
     const btnCoast = document.getElementById('btnCoastStop');
-    if (btnCoast) btnCoast.addEventListener('click', () => sendCmdVel(0.0, 0.0));
+    if (btnCoast) btnCoast.addEventListener('click', () => { pendingCmd = null; sendCmdVel(0.0, 0.0); });
 
     const btnBrake = document.getElementById('btnActiveBrake');
-    if (btnBrake) btnBrake.addEventListener('click', () => sendCmdVel(0.0, 0.0));
+    if (btnBrake) btnBrake.addEventListener('click', () => { pendingCmd = null; sendCmdVel(0.0, 0.0); });
 
     // Keyboard Listeners
     window.addEventListener('keydown', (e) => {
@@ -195,6 +241,7 @@ function setupHITLControls() {
         }
 
         if (k === ' ' || k === 'b') {
+            pendingCmd = null;
             sendCmdVel(0.0, 0.0);
             return;
         }
@@ -213,35 +260,51 @@ function setupHITLControls() {
             updateKeyboardDriving();
         }
     });
+
+    // Safety: Clear keys on window blur so robot never runs away when clicking another tab
+    window.addEventListener('blur', () => {
+        for (const k in activeKeys) delete activeKeys[k];
+        updateKeyboardDriving();
+    });
 }
 
 function updateKeyboardDriving() {
-    if (currentMode !== 'MANUAL' || isEstop) return;
+    if (currentMode !== 'MANUAL' || isEstop) {
+        if (driveLoopTimer) {
+            clearInterval(driveLoopTimer);
+            driveLoopTimer = null;
+        }
+        return;
+    }
 
-    let lin = 0.0;
-    let ang = 0.0;
+    const calcVel = () => {
+        let lin = 0.0;
+        let ang = 0.0;
+        if (activeKeys['w']) lin += 1.0;
+        if (activeKeys['s']) lin -= 1.0;
+        if (activeKeys['a']) ang += 0.8;
+        if (activeKeys['d']) ang -= 0.8;
+        if (activeKeys['q']) ang += 1.0;
+        if (activeKeys['e']) ang -= 1.0;
+        return {
+            linear: lin * maxLinearSpeed,
+            angular: ang * maxAngularSpeed,
+        };
+    };
 
-    if (activeKeys['w']) lin += 1.0;
-    if (activeKeys['s']) lin -= 1.0;
-    if (activeKeys['a']) ang += 0.8;
-    if (activeKeys['d']) ang -= 0.8;
-    if (activeKeys['q']) ang += 1.0;
-    if (activeKeys['e']) ang -= 1.0;
-
-    const targetLin = lin * maxLinearSpeed;
-    const targetAng = ang * maxAngularSpeed;
-
-    sendCmdVel(targetLin, targetAng);
-
-    // Continuous refresh while key is held
     if (Object.keys(activeKeys).length > 0) {
+        const vel = calcVel();
+        sendCmdVel(vel.linear, vel.angular);
         if (!driveLoopTimer) {
             driveLoopTimer = setInterval(() => {
-                if (Object.keys(activeKeys).length === 0) {
+                if (Object.keys(activeKeys).length === 0 || currentMode !== 'MANUAL' || isEstop) {
                     clearInterval(driveLoopTimer);
                     driveLoopTimer = null;
+                    pendingCmd = null;
+                    sendCmdVel(0.0, 0.0);
                 } else {
-                    sendCmdVel(targetLin, targetAng);
+                    const v = calcVel();
+                    sendCmdVel(v.linear, v.angular);
                 }
             }, 100);
         }
@@ -250,6 +313,7 @@ function updateKeyboardDriving() {
             clearInterval(driveLoopTimer);
             driveLoopTimer = null;
         }
+        pendingCmd = null;
         sendCmdVel(0.0, 0.0);
     }
 }
@@ -267,6 +331,7 @@ function setupVirtualJoystick() {
     let isInteracting = false;
     let stickX = centerX;
     let stickY = centerY;
+    let joystickLoopTimer = null;
 
     function draw() {
         ctx.clearRect(0, 0, w, h);
@@ -334,16 +399,31 @@ function setupVirtualJoystick() {
         const angular = -normX * maxAngularSpeed;
 
         joystickVel = { linear, angular };
-        if (currentMode === 'MANUAL' && !isEstop) {
+
+        // Start 10 Hz throttled sender if not running
+        if (!joystickLoopTimer && currentMode === 'MANUAL' && !isEstop) {
             sendCmdVel(linear, angular);
+            joystickLoopTimer = setInterval(() => {
+                if (isInteracting && currentMode === 'MANUAL' && !isEstop) {
+                    sendCmdVel(joystickVel.linear, joystickVel.angular);
+                } else if (!isInteracting) {
+                    clearInterval(joystickLoopTimer);
+                    joystickLoopTimer = null;
+                }
+            }, 100);
         }
     }
 
     function resetStick() {
+        if (joystickLoopTimer) {
+            clearInterval(joystickLoopTimer);
+            joystickLoopTimer = null;
+        }
         stickX = centerX;
         stickY = centerY;
         draw();
         joystickVel = { linear: 0.0, angular: 0.0 };
+        pendingCmd = null;
         if (currentMode === 'MANUAL') {
             sendCmdVel(0.0, 0.0);
         }
@@ -382,6 +462,10 @@ function setupVirtualJoystick() {
     });
 }
 
+// In-Flight Request Throttler: Prevents HTTP backlog pile-up and lag
+let isCmdInFlight = false;
+let pendingCmd = null;
+
 function sendCmdVel(linear, angular) {
     // Update live velocity display on UI
     const elLin = document.getElementById('dispCmdLinear');
@@ -389,11 +473,26 @@ function sendCmdVel(linear, angular) {
     if (elLin) elLin.innerText = `${linear.toFixed(2)} m/s`;
     if (elAng) elAng.innerText = `${angular.toFixed(2)} rad/s`;
 
+    if (isCmdInFlight) {
+        pendingCmd = { linear, angular };
+        return;
+    }
+
+    isCmdInFlight = true;
     fetch('/api/cmd_vel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ linear_x: linear, angular_z: angular }),
-    }).catch(err => console.error('cmd_vel failed:', err));
+    })
+    .catch(err => console.error('cmd_vel failed:', err))
+    .finally(() => {
+        isCmdInFlight = false;
+        if (pendingCmd !== null) {
+            const next = pendingCmd;
+            pendingCmd = null;
+            sendCmdVel(next.linear, next.angular);
+        }
+    });
 }
 
 // ============================================================

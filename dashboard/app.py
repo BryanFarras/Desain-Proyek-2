@@ -176,8 +176,8 @@ def send_cmd_vel():
         angular_z = max(-1.50, min(1.50, angular_z))
 
         if ros_client:
-            ros_client.send_cmd_vel(linear_x, angular_z)
-            return jsonify({'success': True, 'linear_x': linear_x, 'angular_z': angular_z})
+            success = ros_client.send_cmd_vel(linear_x, angular_z)
+            return jsonify({'success': success, 'linear_x': linear_x, 'angular_z': angular_z})
         return jsonify({'success': False, 'error': 'ROS 2 client not connected'}), 503
     except Exception as e:
         return jsonify({'success': False, 'error': str(e)}), 400
@@ -206,6 +206,25 @@ def set_mode():
         ros_client.set_mode(mode)
         return jsonify({'success': True, 'mode': mode})
     return jsonify({'success': False, 'error': 'ROS 2 client not connected'}), 503
+
+
+@app.route('/api/initialpose', methods=['POST'])
+def set_initial_pose():
+    """2D Pose Estimate: User clicks and drags on RViz to set AMCL initial pose."""
+    req = request.get_json() or {}
+    try:
+        x = float(req.get('x', 0.0))
+        y = float(req.get('y', 0.0))
+        yaw = float(req.get('yaw', 0.0))
+        frame_id = str(req.get('frame_id', 'map'))
+
+        append_log('INFO', f"Setting AMCL Initial Pose: ({x:.2f}, {y:.2f}) yaw={yaw:.2f} rad")
+        if ros_client:
+            ros_client.send_initial_pose(x, y, yaw, frame_id)
+            return jsonify({'success': True, 'initial_pose': {'x': x, 'y': y, 'yaw': yaw}})
+        return jsonify({'success': False, 'error': 'ROS 2 client not connected'}), 503
+    except Exception as e:
+        return jsonify({'success': False, 'error': str(e)}), 400
 
 
 @app.route('/api/goal', methods=['POST'])
@@ -239,7 +258,7 @@ def run_command():
             'Real Robot SLAM Stack',
         ),
         'start_nav2': (
-            'ros2 launch AREbot_description main_realbot_nav_setup.launch.py gui:=false',
+            'ros2 launch AREbot_description main_realbot_nav_setup.launch.py gui:=false auto_localize:=false',
             'Nav2 & AMCL Localization',
         ),
         'start_telemetry': (

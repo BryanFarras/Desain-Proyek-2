@@ -157,7 +157,9 @@ def main(argv=None):
     while True:
         try:
             # Jika user memberikan argumen spesifik selain 'auto' dan tidak sama
-            if args.esp32_port != 'auto' and args.lidar_port != 'auto' and args.esp32_port != args.lidar_port:
+            specific_ports = (args.esp32_port != 'auto' and args.lidar_port != 'auto'
+                              and args.esp32_port != args.lidar_port)
+            if specific_ports:
                 esp_port = args.esp32_port if classify(args.esp32_port) == 'esp32' else None
                 lidar_port = args.lidar_port if classify(args.lidar_port) == 'lidar' else None
             else:
@@ -176,7 +178,7 @@ def main(argv=None):
                     pass
                 return 0
             elif lidar_port and not esp_port:
-                print(f'[MENUNGGU] LiDAR terdeteksi di {lidar_port}, tetapi ESP32 BELUM TERDETEKSI. '
+                print(f'[MENUNGGU] LiDAR terdeteksi di {lidar_port}, tetapi ESP32 BELUM ADA. '
                       'Pastikan kabel USB ESP32 sudah tercolok...', flush=True)
             elif esp_port and not lidar_port:
                 print(f'[MENUNGGU] ESP32 terdeteksi di {esp_port}, tetapi LiDAR BELUM TERDETEKSI. '

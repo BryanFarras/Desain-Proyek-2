@@ -198,7 +198,7 @@ class DashboardTelemetryNode(Node):
         # Timer for periodic publish
         self.timer = self.create_timer(1.0 / pub_rate, self._publish_telemetry)
         self.get_logger().info(
-            f"Dashboard Telemetry Node started. Publishing to '{self.telemetry_topic}' at {pub_rate} Hz.")
+            f"Dashboard Telemetry Node started on '{self.telemetry_topic}' at {pub_rate} Hz.")
 
     # ----------------- Callbacks -----------------
 

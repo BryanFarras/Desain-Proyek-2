@@ -1,270 +1,269 @@
-# DESPRO Rover
+# Autonomous Evacuation Rover (AER) — DESPRO Rover
 
-ROS 2 Humble differential-drive rover: Raspberry Pi 4 + ESP32 motor controller
-+ LD06 LiDAR. It supports mapping (SLAM Toolbox), map-based localization
-(AMCL), Nav2 autonomous navigation, and headless keyboard teleop.
+Sistem robot mobile *differential-drive* berbasis **ROS 2 Humble**: Raspberry Pi 4 + ESP32 Closed-Loop Motor Controller + LD06 LiDAR + Web Operations & RViz2 Dashboard.
 
-![status](https://img.shields.io/badge/status-real--robot%20verified%204%20Nov%202026-blue)
+Repositori ini mendukung seluruh alur kerja robotika:
+1. **Setup Lingkungan Windows WSL 2 / Native Linux Ubuntu 22.04 LTS**
+2. **Diagnostik Perangkat Keras & Deteksi Otomatis Port USB Serial**
+3. **Pemetaan Awal (SLAM Toolbox 2D Mapping)**
+4. **Navigasi Otonom (Nav2 & AMCL Particle Filter)**
+5. **Monitoring & Kendali Jarak Jauh Berbasis Web (Operations & RViz2 Dashboard)**
 
-## 1. Hardware
+---
 
-| Part | Connection | Notes |
-|---|---|---|
-| Raspberry Pi 4 (aarch64) | — | Runs ROS 2 Humble |
-| ESP32 wheel controller | USB serial, 115200 baud | CP2102 (`10c4:ea60`), streams `DATA:` telemetry |
-| LD06 LiDAR | USB serial, 230400 baud | CP2102 (`10c4:ea60`), publishes `/scan` |
-| Differential drive | Motor A = right, Motor B = left | 67 mm wheels, 20 cm track |
-
-Both USB adapters use the **same VID:PID and serial number**, so they can only
-be told apart by the data they send (or by their physical USB port). The launch
-files auto-detect the roles; see [USB ports](#4-usb-ports-and-udev).
-
-## 2. Architecture
+## 1. Arsitektur Sistem & Aliran Data
 
 ```text
- LiDAR (LD06) ──/scan──────────────┐
-                                   ├──> SLAM Toolbox ──/map──┬──> Nav2
- ESP32 ──/wheel_telemetry──> wheel_odometry ──/odom + TF─────┤
-   ▲                                   │                     └──> AMCL ──/amcl_pose
-   │ /cmd_vel                         │                              ▲
-   └──────── esp32_bridge <───────────┴──────── Nav2 controller ─────┘
-                                             (or keyboard teleop)
+ ┌──────────────────────┐
+ │   LiDAR LD06         │──/scan───────────┐
+ └──────────────────────┘                  ├──> SLAM Toolbox ──/map──┬──> Nav2 Stack
+ ┌──────────────────────┐                  │                         └──> AMCL ──/amcl_pose
+ │   ESP32 Controller   │──/wheel_telem──> wheel_odometry ──/odom────┤             ▲
+ └──────────────────────┘                  │    (+ TF odom->base)    │             │
+            ▲                              │                         v             │
+   /cmd_vel │                     ┌────────┴────────┐         ┌────────────────────┴┐
+            └─────────────────────┤  esp32_bridge   │<────────┤ Nav2 / Web Dashboard│
+                                  └─────────────────┘         └─────────────────────┘
 ```
 
-ROS nodes (`AREbot_description` package):
-
-| Node | Subscribes | Publishes |
+### Spesifikasi Perangkat Keras
+| Komponen | Spesifikasi & Koneksi | Fungsi |
 |---|---|---|
-| `esp32_bridge` | `/cmd_vel` | `/wheel_telemetry` |
-| `wheel_odometry` | `/wheel_telemetry`, `/cmd_vel` | `/odom`, TF `odom -> base_footprint` |
-| `usb_preflight` | — | validates the serial ports before the stack starts |
-| `auto_localize` | `/scan`, `/amcl_pose`, TF | `/cmd_vel` during the spin, `/initialpose`, `/request_nomotion_update` |
-| `cmd_vel_relay` | `/cmd_vel` | `/diff_drive_controller/cmd_vel_unstamped` (Gazebo) |
-| `teleop_twist_keyboard` | keyboard | `/cmd_vel` |
+| **SBC Utama** | Raspberry Pi 4 Model B (aarch64), Ubuntu 22.04 LTS | Menjalankan ROS 2 Humble & Web Dashboard |
+| **Microcontroller** | ESP32-WROOM-32 (CP2102 USB Serial, 115200 baud) | PID closed-loop motor, pembacaan encoder roda |
+| **Sensor Jarak** | LD06 LiDAR 360° (CP2102 USB Serial, 230400 baud) | Pemetaan SLAM, lokalisasi AMCL, *obstacle avoidance* |
+| **Aktuator** | 2x DC Geared Motor (34:1, 11 PPR encoder) | Penggerak diferensial (radius roda 33.5 mm, track 200 mm) |
+| **Driver Motor** | TB6612FNG H-Bridge Driver | Pengendali arah dan PWM motor DC |
 
-## 3. Build / install
+---
 
-Prerequisites: ROS 2 Humble on Ubuntu 22.04. The one-shot installer adds
-Gazebo Fortress, `ros_gz_sim` / `ros_gz_bridge`, `gz_ros2_control`,
-`robot_localization`, the ROS/Python dependencies, and the udev rules:
+## 2. Bagian I: Panduan Instalasi WSL 2 di Windows
 
-```bash
-cd ~/desproRover_ws
-./tools/install_dependencies.sh        # asks for sudo when needed
-source install/setup.bash
+Jika Anda menjalankan sistem monitoring, visualisasi RViz2 desktop, atau pengujian simulasi dari komputer Windows (Windows 10/11), gunakan langkah-langkah berikut:
+
+### 2.1 Install WSL 2 & Ubuntu 22.04 LTS
+Buka **PowerShell sebagai Administrator** di Windows, lalu jalankan:
+
+```powershell
+# 1. Pastikan WSL versi 2 menjadi default
+wsl --set-default-version 2
+
+# 2. Install Ubuntu 22.04 LTS
+wsl --install -d Ubuntu-22.04
+
+# 3. Setelah instalasi selesai, reboot komputer jika diminta oleh Windows
 ```
 
-Manual equivalent:
+Buka Ubuntu 22.04 dari Start Menu Windows dan buat username & password akun Linux Anda.
+
+### 2.2 Setup USB Passthrough ke WSL 2 (Menggunakan `usbipd-win`)
+Agar port serial ESP32 dan LiDAR yang tercolok ke Windows dapat diakses langsung oleh WSL 2:
+
+1. Di Windows PowerShell (Administrator), install `usbipd-win`:
+   ```powershell
+   winget install --interactive --exact dorssel.usbipd-win
+   ```
+2. Cek daftar perangkat USB yang terhubung di Windows:
+   ```powershell
+   usbipd list
+   ```
+   *Cari perangkat dengan keterangan `Silicon Labs CP210x USB to UART Bridge` (ESP32 dan LiDAR).*
+3. Hubungkan perangkat USB ke WSL 2 (ganti `<BUSID>` sesuai output list di atas, misal `2-4`):
+   ```powershell
+   usbipd bind --busid <BUSID>
+   usbipd attach --wsl --busid <BUSID>
+   ```
+
+### 2.3 Setup Dependensi ROS 2 Humble di WSL 2 / Ubuntu 22.04
+Buka terminal **Ubuntu 22.04 (WSL 2)**, jalankan:
+
+```bash
+# 1. Update paket sistem
+sudo apt update && sudo apt upgrade -y
+
+# 2. Setup repository ROS 2 Humble
+sudo apt install -y software-properties-common curl git build-essential
+sudo curl -sSL https://raw.githubusercontent.com/ros/rosdistro/master/ros.key -o /usr/share/keyrings/ros-archive-keyring.gpg
+echo "deb [arch=$(dpkg --print-architecture) signed-by=/usr/share/keyrings/ros-archive-keyring.gpg] http://packages.ros.org/ros2/ubuntu $(. /etc/os-release && echo $UBUNTU_CODENAME) main" | sudo tee /etc/apt/sources.list.d/ros2.list > /dev/null
+
+# 3. Install ROS 2 Humble Desktop & tools navigasi
+sudo apt update
+sudo apt install -y \
+    ros-humble-desktop \
+    ros-humble-navigation2 \
+    ros-humble-nav2-bringup \
+    ros-humble-slam-toolbox \
+    ros-humble-robot-state-publisher \
+    ros-humble-xacro \
+    ros-humble-tf2-tools \
+    python3-colcon-common-extensions \
+    python3-rosdep \
+    python3-pip
+
+# 4. Berikan izin akses port serial USB tanpa perlu sudo
+sudo usermod -a -G dialout $USER
+```
+
+---
+
+## 3. Bagian II: Build Workspace & Diagnostik USB
+
+Clone repositori ini atau arahkan ke workspace rover Anda:
 
 ```bash
 cd ~/desproRover_ws
-sudo apt-get install -y ros-humble-ros-gz ros-humble-gz-ros2-control \
-    ros-humble-robot-localization ignition-fortress
-sudo rosdep init && rosdep update
+
+# 1. Inisialisasi rosdep
+sudo rosdep init 2>/dev/null || true
+rosdep update
 rosdep install --from-paths src --ignore-src -r -y
-colcon build --packages-select AREbot_description ldlidar_stl_ros2
+
+# 2. Build seluruh paket ROS 2
+colcon build --symlink-install
 source install/setup.bash
 ```
 
-RViz is optional (it crashes on the headless Pi). Gazebo is optional for real
-robot work, but is required for `live_eval.py` and the simulated bringup.
+> [!TIP]
+> Tambahkan perintah source ke `~/.bashrc` agar otomatis aktif setiap membuka terminal baru:
+> ```bash
+> echo "source /opt/ros/humble/setup.bash" >> ~/.bashrc
+> echo "source ~/desproRover_ws/install/setup.bash" >> ~/.bashrc
+> source ~/.bashrc
+> ```
 
-Rebuild after changing launch files, config, or Python sources.
-
-## 4. USB ports and udev
-
-The defaults are auto-detected by probing each port:
+### 3.1 Verifikasi Port USB Otomatis (Pre-flight Diagnostic)
+Kedua modul USB (ESP32 dan LD06) memiliki chip CP2102 dengan VID:PID identik (`10c4:ea60`). Sistem ini dilengkapi **deteksi dinamis 100%** berdasarkan aliran data asli (*probe*), sehingga urutan colokan `/dev/ttyUSB0` atau `/dev/ttyUSB1` tidak akan pernah tertukar lagi:
 
 ```bash
 ros2 run AREbot_description usb_preflight
-# USB OK: /dev/ttyUSB1 = ESP32, /dev/ttyUSB0 = LiDAR
+```
+*Output yang diharapkan:*
+```text
+[OK] USB Terverifikasi: ESP32=/dev/ttyUSB1, LiDAR=/dev/ttyUSB0
 ```
 
-The launch files call the same discovery at startup, so the order of
-`/dev/ttyUSB0` and `/dev/ttyUSB1` does not matter. To override:
+---
 
+## 4. Bagian III: Pemetaan Awal (SLAM Mapping)
+
+Pemetaan dilakukan untuk membuat peta 2D (Occupancy Grid) lingkungan tempat rover akan beroperasi.
+
+### Langkah 1: Jalankan Stack SLAM Real Robot (Terminal 1)
 ```bash
-ros2 launch AREbot_description main_realbot_nav_setup.launch.py \
-    esp32_port:=/dev/ttyUSB1 lidar_port:=/dev/ttyUSB0
+cd ~/desproRover_ws
+source install/setup.bash
+ros2 launch AREbot_description real_robot_slam.launch.py gui:=false
 ```
+*Stack ini secara otomatis menjalankan:*
+- Deteksi port USB dinamis (`usb_preflight`)
+- Driver LiDAR LD06 (`ldlidar_stl_ros2_node`)
+- Jembatan komunikasi ESP32 (`esp32_bridge`)
+- Estimasi odometri roda (`wheel_odometry`)
+- SLAM Toolbox 2D mapping online async
+- Node agregator telemetri dashboard
 
-For stable names across reboots, install the udev rules (current wiring:
-LiDAR on USB port `1-1.1`, ESP32 on `1-1.2`):
+### Langkah 2: Jalankan Monitoring & Kendalikan Robot (Terminal 2)
 
+**Opsi A: Menggunakan Web Operations Dashboard (Rekomendasi)**
+Buka terminal baru dan jalankan dashboard:
 ```bash
-sudo cp udev/99-arebot-usb.rules /etc/udev/rules.d/99-arebot-usb.rules
-sudo udevadm control --reload-rules
-sudo udevadm trigger
-ls -l /dev/arebot_esp32 /dev/arebot_lidar
+cd ~/desproRover_ws/dashboard
+./start_dashboard.sh
 ```
+Buka browser (di laptop/PC atau HP) pada alamat:
+`http://<IP_RASPBERRY_PI>:5000` (atau `http://localhost:5000`)
+1. Pilih mode **MANUAL (HITL)** pada navbar atas.
+2. Buka tab **🗺️ RViz2 Map** untuk melihat peta yang sedang digambar secara real-time.
+3. Buka tab **🎮 HITL Manual Drive** untuk mengemudikan rover menggunakan **Virtual Joystick**, **D-Pad**, atau tombol keyboard **WASD**.
+4. Kelilingi seluruh ruangan hingga perimeter ruangan tertutup rapi pada tampilan peta.
 
-`udev/99-arebot-usb.rules.example` explains how to find your own `KERNELS`
-values if the Pi is wired differently. The launch files prefer the stable
-names when both symlinks exist.
-
-## 5. Run
-
-All commands assume `source /opt/ros/humble/setup.bash` and
-`source install/setup.bash`.
-
-### 5.1 Teleop
-
+**Opsi B: Menggunakan Teleop Terminal Standar**
 ```bash
 ros2 launch AREbot_description teleop.launch.py
 ```
+*(Gunakan tombol `i` maju, `,` mundur, `j` belok kiri, `l` belok kanan, `k` berhenti).*
 
-Keys are printed on screen (`i` forward, `,` backward, `j`/`l` turn, `k`
-stop, `q`/`z` faster/slower). This launch needs an interactive terminal
-(local or SSH), not systemd. Do **not** run teleop while Nav2 is driving.
-
-### 5.2 Mapping (SLAM)
-
-```bash
-ros2 launch AREbot_description real_robot_slam.launch.py gui:=false
-```
-
-Then drive with teleop in a second terminal. Save the map:
-
-```bash
-ros2 run nav2_map_server map_saver_cli -f ~/desproRover_ws/maps/my_map
-```
-
-The `gui:=true` option starts RViz; leave it off on the headless Pi.
-
-### 5.3 Navigation (AMCL + Nav2)
-
-```bash
-ros2 launch AREbot_description main_realbot_nav_setup.launch.py
-# optionally: map:=/absolute/path/to/map.yaml
-```
-
-The launch:
-
-1. validates the USB ports (stops if they are wrong),
-2. starts the LiDAR, ESP32 bridge, odometry, map server, AMCL, and Nav2,
-3. runs `auto_localize`, which **spins the robot two full turns** to find its
-   initial pose. Put the robot down with clear space around it.
-
-The default map is `map_digilab_save.yaml` (see `config/realbot_nav_setup.yaml`).
-Send goals from RViz/Nav2 on another machine, or run the acceptance test below.
-
-### 5.4 Gazebo
-
-```bash
-ros2 launch AREbot_description gazebo.launch.py gui:=false
-# optional: gui:=true rviz:=true
-```
-
-Gazebo Fortress, `ros_gz_sim`, `ros_gz_bridge`, and `gz_ros2_control` are
-installed by `tools/install_dependencies.sh`. The headless simulation is
-verified: `/clock`, `/scan`, `/diff_drive_controller/odom`, IMU, and all three
-controllers start, and publishing `/cmd_vel` moves the simulated robot.
-RViz is off by default; enable it explicitly with `rviz:=true`.
-
-The simulated robot uses slightly different geometry (`0.0325 m` wheel radius,
-`0.22 m` separation) from the real robot (`0.0335 m`, `0.20 m`).
-
-## 6. Configuration
-
-| File | Purpose |
-|---|---|
-| `config/realbot_nav_setup.yaml` | default map, initial pose prior, nomotion update rate |
-| `config/wheel_odometry.yaml` | wheel radius, track, ticks/rev, signs |
-| `config/esp32_bridge.yaml` | serial device, baud, geometry, safety timeouts |
-| `config/nav2_amcl_params.yaml` | AMCL particles, update thresholds, TF tolerance |
-| `config/nav2_navigation_params_real.yaml` | Nav2 controller/planner/costmap rates and limits |
-| `config/mapper_params_real_mapping.yaml` | SLAM Toolbox mapping parameters |
-| `config/mapper_params_online_async.yaml` | SLAM Toolbox online-async preset |
-
-Geometry values must match between `wheel_odometry.yaml` and
-`esp32_bridge.yaml`. Odometry calibration is described in
-[`docs/CALIBRATION.md`](docs/CALIBRATION.md).
-
-### Serial protocol
-
-ESP32 → Pi, one ASCII line per sample at 115200 baud:
-
-```text
-DATA:<tickA>,<tickB>,<rpmA>,<rpmB>
-```
-
-Pi → ESP32:
-
-```text
-speed(<rpmA>,<rpmB>)   # A = right wheel, B = left wheel
-berhenti               # stop
-```
-
-`esp32_bridge` sends `berhenti` when `/cmd_vel` times out or the node shuts
-down. `wheel_odometry` ignores encoder ticks until the first non-zero
-`/cmd_vel`, so opening the serial port does not shift the odometry origin.
-
-## 7. Maps
-
-| Map | Description |
-|---|---|
-| `map_digilab_save.yaml` | digilab room, current default for navigation |
-| `kamar_save_map.yaml` | small room map |
-| `building_map_save.yaml` | building floor, used by `map_eval.py` |
-| `maze_map_save.yaml` | maze map (higher wall error) |
-
-Map YAML files must sit next to their `.pgm`. To use a different map, pass
-`map:=...` or edit `config/realbot_nav_setup.yaml`.
-
-## 8. Tools
-
-```bash
-# Odometry calibration (drive/rotate manually, then Ctrl-C)
-python3 tools/calibrate_odometry.py --mode distance --distance 2.0
-python3 tools/calibrate_odometry.py --mode rotation --turns 10
-
-# End-to-end Nav2 acceptance (robot must be localized and idle)
-python3 tools/nav_acceptance.py \
-    --goals "1.0,0.0,0; 2.0,1.0,90; 0.0,0.0,180" \
-    --json /tmp/nav_acceptance.json
-
-# Offline map accuracy against the Gazebo world geometry
-python3 tools/eval/map_eval.py --out /tmp/map_eval
-
-# Pose drift in simulation only (needs Gazebo + motion)
-python3 tools/eval/live_eval.py --durasi 60 --debug
-```
-
-See [`tools/eval/README.md`](tools/eval/README.md) for details.
-
-## 9. Tests
-
+### Langkah 3: Simpan Peta ke Disk (Terminal 3)
+Setelah seluruh ruangan terpetakan dengan baik, simpan peta menggunakan:
 ```bash
 cd ~/desproRover_ws
-colcon build --packages-select AREbot_description
-colcon test --packages-select AREbot_description
-colcon test-result --verbose
+ros2 run nav2_map_server map_saver_cli -f ~/desproRover_ws/map_saved
+```
+*(Perintah ini akan menghasilkan dua file: `map_saved.yaml` dan `map_saved.pgm`).*
+
+---
+
+## 5. Bagian IV: Navigasi Otonom (Autonomous Navigation)
+
+Setelah peta tersimpan, Anda dapat menjalankan Nav2 untuk navigasi otonom berbasis *waypoints* dan *costmaps*.
+
+### Langkah 1: Jalankan Bringup Navigasi (Terminal 1)
+```bash
+cd ~/desproRover_ws
+source install/setup.bash
+ros2 launch AREbot_description main_realbot_nav_setup.launch.py map:=/home/dar/desproRover_ws/map_saved.yaml
 ```
 
-The package tests run `flake8` and `pydocstyle` (copyright is skipped). They
-currently pass. For a quick manual lint:
+> [!NOTE]
+> **Perbaikan Integrasi Dashboard (Pencegahan Motor Berputar Tidak Terkontrol):**
+> Pada versi sebelumnya, bringup navigasi secara bawaan mengeksekusi `auto_localize` yang langsung memutar robot secara liar sebanyak 2 putaran penuh (720°) dengan kecepatan 0.5 rad/s.
+> Sekarang, argumen `auto_localize` telah diatur ke `false` secara default. Rover akan **diam dengan aman di posisi awalnya** dan menunggu perintah lokalisasi atau tujuan dari Anda.
+
+### Langkah 2: Berikan Estimasi Posisi Awal (2D Pose Estimate)
+Agar AMCL mengetahui letak rover di dalam peta:
+
+- **Via Web Dashboard**:
+  1. Buka dashboard di browser (`http://<IP_ROVER>:5000`).
+  2. Di toolbar tab **RViz2 Map**, klik tombol **`📍 2D Pose Estimate`**.
+  3. Klik titik pada peta tempat rover berada, lalu drag panah hijau sesuai arah hadap moncong rover saat ini.
+- **Via RViz2 Desktop di Komputer Remote**:
+  1. Klik tool **2D Pose Estimate** di toolbar atas RViz2.
+  2. Klik dan tarik panah orientasi pada peta.
+
+*(Partikel AMCL akan langsung terkonsentrasi di sekitar rover).*
+
+### Langkah 3: Kirim Titik Tujuan Navigasi (2D Nav Goal)
+1. Pada Web Dashboard, klik tombol **`🎯 2D Nav Goal`**.
+2. Klik lokasi tujuan pada peta dan drag panah arah hadap akhir yang diinginkan.
+3. Ubah mode rover ke **AUTONOMOUS** pada navbar atas.
+4. Nav2 global planner (NavFn/Smac) dan controller (DWB/RPP) akan menghitung jalur bebas hambatan dan menggerakkan rover secara mandiri hingga mencapai target.
+
+---
+
+## 6. Bagian V: Panduan & Fitur Web Operations Dashboard
+
+Dashboard web menyediakan antarmuka terpadu untuk monitoring, visualisasi RViz2 tanpa aplikasi desktop, dan kendali manual manusia (*Human-in-the-loop*).
 
 ```bash
-cd src/AREbot_description
-python3 -m flake8 . --max-line-length=99 --exclude=__pycache__
+cd ~/desproRover_ws/dashboard
+./start_dashboard.sh
 ```
 
-## 10. Troubleshooting
+### Arsitektur Keamanan yang Diperbaiki:
+1. **In-Flight Request Throttler**:
+   - Menghilangkan *network latency backlog*. Perintah kendali dibatasi pada 10 Hz dengan antrean *non-blocking*. Rover berhenti seketika saat joystick atau tombol dilepas.
+2. **Backend Safety Watchdog (400 ms)**:
+   - Jika koneksi Wi-Fi atau browser terputus saat rover sedang melaju di mode MANUAL, backend otomatis memotong sinyal `/cmd_vel` ke `(0, 0)` dalam waktu 400 milidetik.
+3. **Firmware Watchdog ESP32 (600 ms)**:
+   - Jika kabel data Raspberry Pi terlepas atau program crash, ESP32 mematikan semua pin motor PWM secara hardware.
+4. **Mode Isolation**:
+   - **STANDBY**: Perintah motor manual dikunci rapat untuk mencegah sentuhan tidak sengaja.
+   - **MANUAL**: Kendali penuh keyboard WASD, Joystick, dan D-Pad aktif dengan pembatas kecepatan aman.
+   - **AUTONOMOUS**: Kendali manual dinonaktifkan agar tidak bertabrakan dengan sinyal navigasi Nav2.
+   - **EMERGENCY STOP (Tombol Merah / Shortcut `ESC`)**: Menghentikan seluruh pergerakan seketika.
 
-| Symptom | Fix |
+---
+
+## 7. Referensi Perintah Cepat (Cheatsheet)
+
+| Operasi | Perintah Terminal |
 |---|---|
-| `USB belum terdeteksi` | Check cable/power. Run `ros2 run AREbot_description usb_preflight`; it prints the detected role per port. |
-| `PORT TERTUKAR` | The launch auto-detects, so this only happens with explicit `*_port` arguments. Swap the arguments or the cables. |
-| `Transform data too old` | AMCL `transform_tolerance` is 0.6 s; if it persists, lower Nav2 rates further or reduce CPU load. |
-| `Planner loop missed its desired rate` | The Pi 4 is overloaded. Lower `controller_frequency` / costmap rates, or enable composition after testing. |
-| RViz exits with `-6` | Do not start RViz on the headless Pi (`gui:=false`, the default). |
-| ESP32 telemetry stops | Check USB power/cable, disable USB autosuspend, and watch for reconnects. `esp32_bridge` retries automatically. |
-| LiDAR `get ldlidar data is time out` | Check the 230400 baud device, USB power, and that the LiDAR is on the detected port. |
-| Robot does not move | Check `/cmd_vel`, `/wheel_telemetry`, and the ESP32 serial connection. Teleop must be in an interactive terminal. |
-
-## 11. Project status
-
-See [`PROJECT_STATUS.md`](PROJECT_STATUS.md) for the completion matrix,
-hardware verification log, and remaining work. As of 4 November 2026 the real
-robot LiDAR and ESP32 links are verified, but odometry calibration, the Nav2
-acceptance run, and long-run USB stability are still outstanding.
+| **Cek Koneksi USB** | `ros2 run AREbot_description usb_preflight` |
+| **Mulai SLAM Mapping** | `ros2 launch AREbot_description real_robot_slam.launch.py gui:=false` |
+| **Simpan Peta** | `ros2 run nav2_map_server map_saver_cli -f ~/desproRover_ws/nama_peta` |
+| **Mulai Nav2 Otonom** | `ros2 launch AREbot_description main_realbot_nav_setup.launch.py map:=/home/dar/desproRover_ws/nama_peta.yaml` |
+| **Buka Web Dashboard** | `cd ~/desproRover_ws/dashboard && ./start_dashboard.sh` |
+| **Teleop Terminal Manual** | `ros2 launch AREbot_description teleop.launch.py` |
+| **Uji Komprehensif Nav2** | `python3 tools/nav_acceptance.py --goals "1.0,0.0,0; 0.0,0.0,0"` |
+| **Kalibrasi Odometri Roda** | `python3 tools/calibrate_odometry.py --mode rotation --turns 5` |
+| **Unit Test Kode** | `colcon test --packages-select AREbot_description && colcon test-result --verbose` |

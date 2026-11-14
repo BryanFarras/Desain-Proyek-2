@@ -26,7 +26,7 @@ try:
         DurabilityPolicy,
         HistoryPolicy,
     )
-    from geometry_msgs.msg import Twist, PoseStamped
+    from geometry_msgs.msg import Twist, PoseStamped, PoseWithCovarianceStamped
     from nav_msgs.msg import OccupancyGrid
     from std_msgs.msg import String, Bool
     RCLPY_AVAILABLE = True
@@ -110,6 +110,13 @@ class DashboardROSClient(Node if RCLPY_AVAILABLE else object):
         self.pub_estop = self.create_publisher(Bool, '/emergency_stop', reliable_qos)
         self.pub_mode = self.create_publisher(String, '/rover/mode', reliable_qos)
         self.pub_goal = self.create_publisher(PoseStamped, '/goal_pose', reliable_qos)
+        self.pub_initialpose = self.create_publisher(
+            PoseWithCovarianceStamped, '/initialpose', reliable_qos)
+
+        # Safety watchdog for manual driving (stops robot if client disconnects)
+        self._last_cmd_vel_time = 0.0
+        self._manual_motion_active = False
+        self.watchdog_timer = self.create_timer(0.1, self._manual_watchdog_cb)
 
         self.get_logger().info("Dashboard ROS 2 client initialized successfully.")
 
@@ -163,14 +170,54 @@ class DashboardROSClient(Node if RCLPY_AVAILABLE else object):
         except Exception as e:
             self.get_logger().error(f"Error caching occupancy grid map: {e}")
 
+    def _manual_watchdog_cb(self):
+        """Safety watchdog: if MANUAL mode is active and no cmd_vel arrived for > 0.4s, stop."""
+        with self._lock:
+            is_estop = self.telemetry.get('estop', False)
+            motion_active = self._manual_motion_active
+            last_cmd = self._last_cmd_vel_time
+
+        now = time.time()
+        if (motion_active or is_estop) and (now - last_cmd > 0.40):
+            msg = Twist()
+            msg.linear.x = 0.0
+            msg.angular.z = 0.0
+            self.pub_cmd_vel.publish(msg)
+            with self._lock:
+                self._manual_motion_active = False
+
     # ----------------- Commands -----------------
 
-    def send_cmd_vel(self, linear_x: float, angular_z: float):
-        """Publish velocity command to /cmd_vel."""
+    def send_cmd_vel(self, linear_x: float, angular_z: float, force: bool = False):
+        """Publish velocity command to /cmd_vel with mode and watchdog protection."""
+        with self._lock:
+            mode = self.telemetry.get('mode', 'STANDBY')
+            is_estop = self.telemetry.get('estop', False)
+
+        # Always allow stopping (0, 0)
+        is_stop = (abs(linear_x) < 1e-4 and abs(angular_z) < 1e-4)
+
+        if is_estop:
+            linear_x = 0.0
+            angular_z = 0.0
+        elif not is_stop and not force:
+            if mode == 'STANDBY':
+                self.get_logger().warn("Manual driving rejected: Rover is in STANDBY mode.")
+                return False
+            elif mode == 'AUTONOMOUS':
+                self.get_logger().warn("Manual driving rejected: Rover is in AUTONOMOUS mode (Nav2 is driving).")
+                return False
+
         msg = Twist()
         msg.linear.x = float(linear_x)
         msg.angular.z = float(angular_z)
         self.pub_cmd_vel.publish(msg)
+
+        now = time.time()
+        with self._lock:
+            self._last_cmd_vel_time = now
+            self._manual_motion_active = not is_stop
+        return True
 
     def send_emergency_stop(self):
         """Immediately trigger E-STOP and publish zero velocities."""
@@ -179,7 +226,7 @@ class DashboardROSClient(Node if RCLPY_AVAILABLE else object):
         self.pub_estop.publish(msg_estop)
 
         # Halt wheels immediately
-        self.send_cmd_vel(0.0, 0.0)
+        self.send_cmd_vel(0.0, 0.0, force=True)
 
         # Set mode to ESTOP
         self.set_mode('ESTOP')
@@ -190,10 +237,38 @@ class DashboardROSClient(Node if RCLPY_AVAILABLE else object):
         msg = String()
         msg.data = mode
         self.pub_mode.publish(msg)
+
+        # When leaving MANUAL or entering STANDBY/ESTOP/AUTONOMOUS, halt manual motion
+        if mode in ['STANDBY', 'ESTOP', 'AUTONOMOUS']:
+            self.send_cmd_vel(0.0, 0.0, force=True)
+
         with self._lock:
             self.telemetry['mode'] = mode
             if mode != 'ESTOP':
                 self.telemetry['estop'] = False
+
+    def send_initial_pose(self, x: float, y: float, yaw: float = 0.0, frame_id: str = 'map'):
+        """Publish a 2D Initial Pose Estimate to /initialpose for AMCL."""
+        q = yaw_to_quaternion(yaw)
+        msg = PoseWithCovarianceStamped()
+        msg.header.stamp = self.get_clock().now().to_msg()
+        msg.header.frame_id = frame_id
+        msg.pose.pose.position.x = float(x)
+        msg.pose.pose.position.y = float(y)
+        msg.pose.pose.position.z = 0.0
+        msg.pose.pose.orientation.x = q['x']
+        msg.pose.pose.orientation.y = q['y']
+        msg.pose.pose.orientation.z = q['z']
+        msg.pose.pose.orientation.w = q['w']
+
+        cov = [0.0] * 36
+        cov[0] = 0.25   # x covariance
+        cov[7] = 0.25   # y covariance
+        cov[35] = 0.06  # yaw covariance
+        msg.pose.covariance = cov
+
+        self.pub_initialpose.publish(msg)
+        self.get_logger().info(f"Published AMCL initial pose: ({x:.2f}, {y:.2f}, yaw={yaw:.2f} rad)")
 
     def send_goal_pose(self, x: float, y: float, yaw: float = 0.0, frame_id: str = 'map'):
         """Publish a 2D Navigation Goal to /goal_pose."""
