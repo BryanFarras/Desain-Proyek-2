@@ -1,27 +1,28 @@
 amcl:
   ros__parameters:
-    use_sim_time: true
+    use_sim_time: false
     global_frame_id: map
     odom_frame_id: odom
     base_frame_id: base_footprint
     scan_topic: scan
     robot_model_type: "nav2_amcl::DifferentialMotionModel"
     laser_model_type: likelihood_field
-    laser_min_range: 0.1
+    laser_min_range: 0.16
     laser_max_range: 10.0
-    # Update on motion. While stationary, run_amcl.py / auto_localize forces
-    # updates via the request_nomotion_update service. 0.05 m / 0.05 rad
-    # avoids re-running the filter for every tiny wheel-odometry jitter on the
-    # Raspberry Pi (0.02/0.02 saturated the CPU).
-    update_min_d: 0.05
-    update_min_a: 0.05
-    # Particle count: lower than the Nav2 defaults (500-2000) to leave CPU for
-    # the controller/planner, while still enough for a 2D indoor map.
-    min_particles: 300
+    laser_likelihood_max_dist: 2.0
+    # Motion model noise parameters (tuned for physical diff-drive rover)
+    alpha1: 0.25  # expected rot error from rot
+    alpha2: 0.25  # expected rot error from trans
+    alpha3: 0.20  # expected trans error from trans
+    alpha4: 0.20  # expected trans error from rot
+    # Update thresholds: 0.08 m / 0.08 rad provides smooth particle updates
+    # without saturating the Raspberry Pi 4 CPU.
+    update_min_d: 0.08
+    update_min_a: 0.08
+    # Particle count: 400 - 1500 particles for stable indoor convergence
+    min_particles: 400
     max_particles: 1500
     resample_interval: 1
     laser_max_beams: 60
-    # map->odom is stamped scan_stamp + tolerance. A value too small makes
-    # Nav2 reject the transform as "too old" on the Pi; 0.6 s covers the
-    # typical 0.2-0.4 s AMCL/TF latency seen in the 27 Oct logs.
-    transform_tolerance: 0.6
+    # 0.8 s transform tolerance prevents "TF data too old" drops under CPU load
+    transform_tolerance: 0.8

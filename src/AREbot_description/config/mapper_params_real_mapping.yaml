@@ -33,33 +33,32 @@ slam_toolbox:
 
     map_update_interval: 1.0
     minimum_time_interval: 0.2
-    # 0.0 = process every scan (rate limited by minimum_time_interval),
-    # so scan matching keeps correcting map->odom even while stationary
-    minimum_travel_distance: 0.1
-    minimum_travel_heading: 0.1
-    min_laser_range: 0.05
+    # Update thresholds: 0.08 m / 0.08 rad gives frequent scan alignments
+    # without lagging the Ceres solver on Raspberry Pi 4
+    minimum_travel_distance: 0.08
+    minimum_travel_heading: 0.08
+    # 0.16 m ignores self-reflection from rover chassis, caster, and cables
+    min_laser_range: 0.16
     max_laser_range: 12.0
 
     # General Parameters
     use_scan_matching: true
     use_scan_barycenter: true
-    # minimum_travel_distance: 0.5
-    # minimum_travel_heading: 0.5
-    scan_buffer_size: 10
+    scan_buffer_size: 30
     scan_buffer_maximum_scan_distance: 12.0
-    link_match_minimum_response_fine: 0.1  
+    link_match_minimum_response_fine: 0.25  
     link_scan_maximum_distance: 1.5
-    loop_search_maximum_distance: 5.0
+    loop_search_maximum_distance: 6.0
     do_loop_closing: true 
     loop_match_minimum_chain_size: 10           
     loop_match_maximum_variance_coarse: 3.0  
-    loop_match_minimum_response_coarse: 0.5    
+    loop_match_minimum_response_coarse: 0.50    
     loop_match_minimum_response_fine: 0.45
 
-    # Correlation Parameters - Correlation Parameters
-    correlation_search_space_dimension: 0.5
+    # Correlation Parameters
+    correlation_search_space_dimension: 0.65
     correlation_search_space_resolution: 0.01
-    correlation_search_space_smear_deviation: 0.1 
+    correlation_search_space_smear_deviation: 0.10 
 
     # Correlation Parameters - Loop Closure Parameters
     loop_search_space_dimension: 8.0
