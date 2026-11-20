@@ -89,20 +89,23 @@ def parse_occupancy_map(yaml_path: str):
     # Standard ROS map values: 0=free, 100=occupied, -1=unknown
     grid = np.full((h, w), -1, dtype=np.int8)
 
-    # Standard ROS map_saver values (0=occ, 205=unknown, 254=free)
-    is_occ = (flipped == 0)
-    is_free = (flipped == 254)
-    grid[is_occ] = 100
-    grid[is_free] = 0
+    # Standard ROS map_saver values (0=occ, 205=unknown, 254/255=free)
+    if negate:
+        grid[flipped == 0] = 0
+        grid[(flipped == 254) | (flipped == 255)] = 100
+    else:
+        grid[flipped == 0] = 100
+        grid[(flipped == 254) | (flipped == 255)] = 0
+    grid[flipped == 205] = -1
 
-    other = ~(is_occ | is_free)
+    # Thresholding for any remaining grayscale values
+    known_mask = (flipped == 0) | (flipped == 254) | (flipped == 255) | (flipped == 205)
+    other = ~known_mask
     if np.any(other):
-        g = flipped[other].astype(np.float32) / 255.0
+        g = flipped.astype(np.float32) / 255.0
         occ = g if negate else (1.0 - g)
-        occ_cells = other & (occ >= occ_thresh)
-        free_cells = other & (occ <= free_thresh)
-        grid[occ_cells] = 100
-        grid[free_cells] = 0
+        grid[other & (occ >= occ_thresh)] = 100
+        grid[other & (occ <= free_thresh)] = 0
 
     return {
         'width': w,
