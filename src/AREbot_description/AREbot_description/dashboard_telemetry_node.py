@@ -40,6 +40,7 @@ from geometry_msgs.msg import Twist, PoseWithCovarianceStamped
 from nav_msgs.msg import Odometry, Path, OccupancyGrid
 from sensor_msgs.msg import LaserScan
 from std_msgs.msg import String, Bool, Float64MultiArray
+from tf2_ros import Buffer, TransformListener
 
 
 def quaternion_to_yaw(x: float, y: float, z: float, w: float) -> float:
@@ -69,15 +70,19 @@ class DashboardTelemetryNode(Node):
         self._start_time = time.time()
 
         # Configurable parameters
-        self.declare_parameter('publish_rate', 5.0)  # Hz
+        self.declare_parameter('publish_rate', 10.0)  # Hz (matches 10 Hz LiDAR)
         self.declare_parameter('telemetry_topic', '/rover/dashboard_telemetry')
-        self.declare_parameter('max_scan_samples', 72)
+        self.declare_parameter('max_scan_samples', 180)
         self.declare_parameter('max_path_samples', 40)
 
         pub_rate = float(self.get_parameter('publish_rate').value)
         self.telemetry_topic = str(self.get_parameter('telemetry_topic').value)
         self.max_scan_samples = int(self.get_parameter('max_scan_samples').value)
         self.max_path_samples = int(self.get_parameter('max_path_samples').value)
+
+        # TF2 Buffer & Listener for real-time map-frame tracking during SLAM/AMCL
+        self.tf_buffer = Buffer()
+        self.tf_listener = TransformListener(self.tf_buffer, self)
 
         # QoS Profiles
         sensor_qos = QoSProfile(
@@ -381,6 +386,29 @@ class DashboardTelemetryNode(Node):
 
     def _publish_telemetry(self):
         now = time.time()
+
+        # Update pose in 'map' frame from TF if available (SLAM mapping or AMCL navigation)
+        try:
+            now_tf = rclpy.time.Time()
+            if self.tf_buffer.can_transform(
+                'map', 'base_footprint', now_tf, timeout=rclpy.duration.Duration(seconds=0.03)
+            ):
+                t = self.tf_buffer.lookup_transform('map', 'base_footprint', now_tf)
+                tx = t.transform.translation.x
+                ty = t.transform.translation.y
+                q = t.transform.rotation
+                yaw = quaternion_to_yaw(q.x, q.y, q.z, q.w)
+                with self._lock:
+                    self.state['pose']['x'] = round(tx, 3)
+                    self.state['pose']['y'] = round(ty, 3)
+                    self.state['pose']['yaw'] = round(yaw, 3)
+                    self.state['pose']['yaw_deg'] = round(math.degrees(yaw), 1)
+                    self.state['pose']['frame'] = 'map'
+                    self.state['source_pose'] = (
+                        'amcl' if self.state['amcl_pose']['active'] else 'slam'
+                    )
+        except Exception:
+            pass
 
         with self._lock:
             # Check timeouts for active sensors

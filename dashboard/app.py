@@ -10,7 +10,7 @@ Flask server integrating:
 """
 
 import collections
-import json
+import glob
 import os
 import signal
 import subprocess
@@ -19,8 +19,11 @@ import time
 
 from flask import Flask, render_template, jsonify, request
 from flask_cors import CORS
+import numpy as np
+from PIL import Image
+import yaml
 
-from ros_client import get_ros_client, start_ros_client
+from ros_client import start_ros_client
 
 app = Flask(__name__)
 CORS(app)
@@ -31,6 +34,85 @@ WORKSPACE_PATH = os.path.abspath(os.path.join(os.path.dirname(__file__), '..'))
 # In-memory log buffer (stores up to 300 recent lines)
 LOG_BUFFER = collections.deque(maxlen=300)
 LOG_LOCK = threading.Lock()
+
+# Active map selection state
+CURRENT_SELECTED_MAP = 'map_digilab_save.yaml'
+MAP_LOCK = threading.Lock()
+
+
+def parse_occupancy_map(yaml_path: str):
+    """Parse a ROS 2 map yaml and companion image file into OccupancyGrid data."""
+    if not os.path.isabs(yaml_path):
+        yaml_path = os.path.join(WORKSPACE_PATH, yaml_path)
+    if not os.path.exists(yaml_path):
+        return None, f"YAML file not found: {yaml_path}"
+
+    try:
+        with open(yaml_path, 'r') as f:
+            meta = yaml.safe_load(f) or {}
+    except Exception as e:
+        return None, f"Failed to parse YAML: {e}"
+
+    image_rel = meta.get('image')
+    if not image_rel:
+        return None, "No 'image' field in map YAML"
+
+    map_dir = os.path.dirname(yaml_path)
+    image_path = os.path.join(map_dir, image_rel)
+    if not os.path.exists(image_path):
+        image_path = os.path.join(WORKSPACE_PATH, image_rel)
+        if not os.path.exists(image_path):
+            return None, f"Companion image not found: {image_rel}"
+
+    try:
+        img = Image.open(image_path).convert('L')
+    except Exception as e:
+        return None, f"Failed to open map image: {e}"
+
+    res = float(meta.get('resolution', 0.05))
+    origin_list = meta.get('origin', [0.0, 0.0, 0.0])
+    origin = {
+        'x': float(origin_list[0]) if len(origin_list) > 0 else 0.0,
+        'y': float(origin_list[1]) if len(origin_list) > 1 else 0.0,
+        'yaw': float(origin_list[2]) if len(origin_list) > 2 else 0.0,
+    }
+    negate = int(meta.get('negate', 0))
+    occ_thresh = float(meta.get('occupied_thresh', 0.65))
+    free_thresh = float(meta.get('free_thresh', 0.196))
+
+    # Convert to ROS OccupancyGrid (row-major starting bottom-left)
+    # PIL image row 0 is top, so we reverse rows (flip vertically)
+    arr = np.array(img, dtype=np.uint8)
+    flipped = np.flipud(arr)
+    h, w = flipped.shape
+
+    # Standard ROS map values: 0=free, 100=occupied, -1=unknown
+    grid = np.full((h, w), -1, dtype=np.int8)
+
+    # Standard ROS map_saver values (0=occ, 205=unknown, 254=free)
+    is_occ = (flipped == 0)
+    is_free = (flipped == 254)
+    grid[is_occ] = 100
+    grid[is_free] = 0
+
+    other = ~(is_occ | is_free)
+    if np.any(other):
+        g = flipped[other].astype(np.float32) / 255.0
+        occ = g if negate else (1.0 - g)
+        occ_cells = other & (occ >= occ_thresh)
+        free_cells = other & (occ <= free_thresh)
+        grid[occ_cells] = 100
+        grid[free_cells] = 0
+
+    return {
+        'width': w,
+        'height': h,
+        'resolution': res,
+        'origin': origin,
+        'data': grid.flatten().tolist(),
+        'yaml_path': yaml_path,
+        'image_path': image_path,
+    }, None
 
 
 def append_log(level: str, text: str):
@@ -107,6 +189,19 @@ append_log('SYS', "Starting ROS 2 node client...")
 ros_client = start_ros_client()
 if ros_client:
     append_log('SYS', "ROS 2 node client connected to ROS domain.")
+    # Preload default saved map for instant RViz visualizer preview
+    default_map_path = os.path.join(WORKSPACE_PATH, CURRENT_SELECTED_MAP)
+    if os.path.exists(default_map_path):
+        parsed_def, _ = parse_occupancy_map(default_map_path)
+        if parsed_def:
+            ros_client.set_custom_map(
+                width=parsed_def['width'],
+                height=parsed_def['height'],
+                resolution=parsed_def['resolution'],
+                origin=parsed_def['origin'],
+                data=parsed_def['data'],
+            )
+            append_log('SYS', f"Default map loaded: {CURRENT_SELECTED_MAP}")
 else:
     append_log('WARN', "ROS 2 client unavailable. Fallback standalone mode active.")
 
@@ -131,13 +226,30 @@ def get_telemetry():
             'mode': 'STANDBY',
             'estop': False,
             'source_pose': 'mock',
-            'pose': {'x': 0.0, 'y': 0.0, 'z': 0.0, 'yaw': 0.0, 'yaw_deg': 0.0, 'frame': 'odom'},
-            'motion': {'linear_vel': 0.0, 'angular_vel': 0.0, 'cmd_linear': 0.0, 'cmd_angular': 0.0},
-            'wheels': {'connected': False, 'tick_left': 0, 'tick_right': 0, 'rpm_left': 0, 'rpm_right': 0},
-            'lidar': {'active': False, 'min_range': 0.0, 'front_distance': 0.0, 'left_distance': 0.0, 'right_distance': 0.0, 'points_count': 0, 'points': []},
-            'map': {'received': False, 'width': 0, 'height': 0, 'resolution': 0.05, 'origin_x': 0.0, 'origin_y': 0.0, 'explored_area_m2': 0.0},
-            'nav': {'is_navigating': False, 'path_length': 0.0, 'distance_to_goal': 0.0, 'waypoints_count': 0, 'waypoints': []},
-            'system': {'cpu_temp_c': 0.0, 'cpu_usage_pct': 0.0, 'ram_usage_pct': 0.0, 'uptime_sec': 0},
+            'pose': {
+                'x': 0.0, 'y': 0.0, 'z': 0.0, 'yaw': 0.0, 'yaw_deg': 0.0, 'frame': 'odom'
+            },
+            'motion': {
+                'linear_vel': 0.0, 'angular_vel': 0.0, 'cmd_linear': 0.0, 'cmd_angular': 0.0
+            },
+            'wheels': {
+                'connected': False, 'tick_left': 0, 'tick_right': 0, 'rpm_left': 0, 'rpm_right': 0
+            },
+            'lidar': {
+                'active': False, 'min_range': 0.0, 'front_distance': 0.0,
+                'left_distance': 0.0, 'right_distance': 0.0, 'points_count': 0, 'points': []
+            },
+            'map': {
+                'received': False, 'width': 0, 'height': 0, 'resolution': 0.05,
+                'origin_x': 0.0, 'origin_y': 0.0, 'explored_area_m2': 0.0
+            },
+            'nav': {
+                'is_navigating': False, 'path_length': 0.0, 'distance_to_goal': 0.0,
+                'waypoints_count': 0, 'waypoints': []
+            },
+            'system': {
+                'cpu_temp_c': 0.0, 'cpu_usage_pct': 0.0, 'ram_usage_pct': 0.0, 'uptime_sec': 0
+            },
             'timestamp': time.time(),
             'telemetry_streaming': False,
         }
@@ -161,6 +273,108 @@ def get_map():
         map_data = ros_client.get_map_data()
         return jsonify(map_data)
     return jsonify({'received': False, 'width': 0, 'height': 0, 'data': []})
+
+
+@app.route('/api/maps', methods=['GET'])
+def get_maps():
+    """Discover available saved maps in workspace."""
+    maps = []
+    patterns = [
+        os.path.join(WORKSPACE_PATH, '*.yaml'),
+        os.path.join(WORKSPACE_PATH, 'maps', '*.yaml'),
+    ]
+    seen_paths = set()
+    for pattern in patterns:
+        for ypath in sorted(glob.glob(pattern)):
+            if ypath in seen_paths:
+                continue
+            seen_paths.add(ypath)
+            try:
+                with open(ypath, 'r') as f:
+                    content = f.read(1024)
+                    if 'image:' not in content:
+                        continue
+                with open(ypath, 'r') as f:
+                    meta = yaml.safe_load(f) or {}
+                img_name = meta.get('image', '')
+                img_path = os.path.join(os.path.dirname(ypath), img_name)
+                if not os.path.exists(img_path):
+                    img_path = os.path.join(WORKSPACE_PATH, img_name)
+                    if not os.path.exists(img_path):
+                        continue
+
+                fname = os.path.basename(ypath)
+                w, h = 0, 0
+                try:
+                    with Image.open(img_path) as im:
+                        w, h = im.size
+                except Exception:
+                    pass
+
+                maps.append({
+                    'name': fname,
+                    'path': ypath,
+                    'label': f"{fname} ({w}x{h})",
+                    'width': w,
+                    'height': h,
+                    'resolution': meta.get('resolution', 0.05),
+                    'origin': meta.get('origin', [0.0, 0.0, 0.0]),
+                })
+            except Exception:
+                continue
+
+    with MAP_LOCK:
+        selected = CURRENT_SELECTED_MAP
+
+    return jsonify({
+        'maps': maps,
+        'selected': selected,
+    })
+
+
+@app.route('/api/map/select', methods=['POST'])
+def select_map():
+    """Load and preview a specific saved map on the dashboard."""
+    global CURRENT_SELECTED_MAP
+    req = request.get_json() or {}
+    map_name = req.get('map_name') or req.get('name')
+    if not map_name:
+        return jsonify({'success': False, 'error': 'No map_name provided'}), 400
+
+    map_path = os.path.join(WORKSPACE_PATH, map_name)
+    if not os.path.exists(map_path):
+        map_path = os.path.join(WORKSPACE_PATH, 'maps', map_name)
+    if not os.path.exists(map_path):
+        return jsonify({'success': False, 'error': f"Map file not found: {map_name}"}), 404
+
+    parsed, err = parse_occupancy_map(map_path)
+    if err or not parsed:
+        return jsonify({'success': False, 'error': err or 'Failed to parse map'}), 500
+
+    if ros_client:
+        ros_client.set_custom_map(
+            width=parsed['width'],
+            height=parsed['height'],
+            resolution=parsed['resolution'],
+            origin=parsed['origin'],
+            data=parsed['data'],
+        )
+
+    with MAP_LOCK:
+        CURRENT_SELECTED_MAP = os.path.basename(map_path)
+
+    append_log(
+        'INFO',
+        f"Selected active map: {CURRENT_SELECTED_MAP} ({parsed['width']}x{parsed['height']})"
+    )
+    return jsonify({
+        'success': True,
+        'selected': CURRENT_SELECTED_MAP,
+        'width': parsed['width'],
+        'height': parsed['height'],
+        'resolution': parsed['resolution'],
+        'origin': parsed['origin'],
+    })
 
 
 @app.route('/api/cmd_vel', methods=['POST'])
@@ -252,14 +466,22 @@ def run_command():
     req = request.get_json() or {}
     cmd_type = req.get('command')
 
+    with MAP_LOCK:
+        selected_map_file = CURRENT_SELECTED_MAP
+
+    selected_map_full = os.path.join(WORKSPACE_PATH, selected_map_file)
+    if not os.path.exists(selected_map_full):
+        selected_map_full = os.path.join(WORKSPACE_PATH, 'maps', selected_map_file)
+
     cmd_map = {
         'start_slam': (
             'ros2 launch AREbot_description real_robot_slam.launch.py gui:=false',
             'Real Robot SLAM Stack',
         ),
         'start_nav2': (
-            'ros2 launch AREbot_description main_realbot_nav_setup.launch.py gui:=false auto_localize:=false',
-            'Nav2 & AMCL Localization',
+            f"ros2 launch AREbot_description main_realbot_nav_setup.launch.py "
+            f"gui:=false auto_localize:=false map:='{selected_map_full}'",
+            f"Nav2 & AMCL Localization ({selected_map_file})",
         ),
         'start_telemetry': (
             'ros2 run AREbot_description dashboard_telemetry',
@@ -274,7 +496,8 @@ def run_command():
             'Auto Localize Spin',
         ),
         'save_map': (
-            f"ros2 run nav2_map_server map_saver_cli -f {WORKSPACE_PATH}/map_saved_{int(time.time())}",
+            f"ros2 run nav2_map_server map_saver_cli -f "
+            f"{WORKSPACE_PATH}/map_saved_{int(time.time())}",
             'Save Current Map',
         ),
         'list_nodes': (
@@ -348,8 +571,8 @@ def clear_logs():
 if __name__ == '__main__':
     port = int(os.environ.get('DASHBOARD_PORT', 5000))
     host = os.environ.get('DASHBOARD_HOST', '0.0.0.0')
-    print(f"\n=======================================================")
-    print(f" AER Rover Operations Dashboard is live!")
+    print("\n=======================================================")
+    print(" AER Rover Operations Dashboard is live!")
     print(f" Web UI: http://localhost:{port} (or http://<pi-ip>:{port})")
-    print(f"=======================================================\n")
+    print("=======================================================\n")
     app.run(host=host, port=port, debug=False, threaded=True)

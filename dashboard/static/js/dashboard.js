@@ -655,7 +655,7 @@ function startTelemetryLoop() {
                     elStatus.className = 'status-pill pill-offline';
                 }
             });
-    }, 200); // 5 Hz
+    }, 100); // 10 Hz for real-time LiDAR & odometry updates
 }
 
 function updateTelemetryUI(t) {
@@ -741,7 +741,7 @@ function startMapLoop() {
                 }
             })
             .catch(() => {});
-    }, 1500); // 1.5s
+    }, 1000); // 1.0s (matches SLAM Toolbox map_update_interval)
 }
 
 function startLogsLoop() {

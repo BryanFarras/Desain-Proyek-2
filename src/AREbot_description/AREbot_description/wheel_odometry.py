@@ -232,7 +232,6 @@ class WheelOdometry(Node):
             return
         if abs(msg.linear.x) > 1e-4 or abs(msg.angular.z) > 1e-4:
             self.armed = True
-            self.prev_left = None
             self.get_logger().info(
                 'wheel_odometry: armed on first cmd_vel; '
                 'integrating encoder ticks')
