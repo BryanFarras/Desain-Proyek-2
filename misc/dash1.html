@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Rover Evakuasi Monitoring Dashboard - Kelompok 9</title>
+    <!-- Tailwind CSS via CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Lucide Icons via CDN -->
+    <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="bg-slate-950 text-slate-100 font-sans antialiased">
+
+    <!-- Top Navigation / Header Status Bar -->
+    <header class="bg-slate-900 border-b border-slate-800 px-6 py-3 flex flex-wrap justify-between items-center gap-4">
+        <div class="flex items-center gap-3">
+            <div class="p-2 bg-indigo-600 rounded-lg">
+                <i data-lucide="bot" class="w-6 h-6 text-white"></i>
+            </div>
+            <div>
+                <h1 class="font-bold text-lg leading-tight">ROVER EVACUATION DASHBOARD</h1>
+                <p class="text-xs text-slate-400">Sistem Monitoring & Kendali Otonom - Kelompok 9</p>
+            </div>
+        </div>
+
+        <!-- Mode & Status Indicators -->
+        <div class="flex items-center gap-4">
+            <!-- Mode Kerja Rover -->
+            <div class="flex items-center gap-2 bg-red-950/80 border border-red-500/50 px-3 py-1.5 rounded-full animate-pulse">
+                <span class="w-2.5 h-2.5 rounded-full bg-red-500"></span>
+                <span class="text-xs font-bold text-red-300 uppercase tracking-wider">Mode Evakuasi Aktif</span>
+            </div>
+
+            <!-- Pemicu Aktivasi -->
+            <div class="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">
+                <i data-lucide="activity" class="w-4 h-4 text-amber-400"></i>
+                <span class="text-slate-400">Pemicu:</span>
+                <span class="font-semibold text-amber-300">Gempa Terdeteksi (Sensor Vibe)</span>
+            </div>
+
+            <!-- Konektivitas & Latensi -->
+            <div class="flex items-center gap-2 bg-slate-800 border border-slate-700 px-3 py-1.5 rounded-lg text-xs">
+                <i data-lucide="wifi" class="w-4 h-4 text-emerald-400"></i>
+                <span class="text-slate-400">Wi-Fi:</span>
+                <span class="font-mono text-emerald-400 font-bold">28 ms</span>
+                <span class="text-[10px] bg-emerald-950 text-emerald-400 px-1 rounded">≤5s Target OK</span>
+            </div>
+
+            <!-- Emergency Stop Kill-Switch Button -->
+            <button class="bg-red-600 hover:bg-red-700 active:bg-red-800 text-white font-black px-4 py-2 rounded-lg border-2 border-red-400 shadow-lg shadow-red-900/40 flex items-center gap-2 uppercase text-sm transition-all">
+                <i data-lucide="octagon-alert" class="w-5 h-5"></i>
+                Emergency Stop
+            </button>
+        </div>
+    </header>
+
+    <!-- Main Content Grid -->
+    <main class="p-6 grid grid-cols-1 lg:grid-cols-3 gap-6">
+
+        <!-- Column 1 & 2: Navigation Map & Camera Feed -->
+        <div class="lg:col-span-2 space-y-6">
+
+            <!-- Panel 1: SLAM Map & Navigasi -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="map" class="w-5 h-5 text-indigo-400"></i>
+                        <h2 class="font-semibold text-sm uppercase tracking-wider text-slate-200">Peta Navigasi SLAM 2D/3D & Path Planning</h2>
+                    </div>
+                    <div class="flex gap-2">
+                        <span class="text-xs bg-indigo-950 border border-indigo-800 text-indigo-300 px-2 py-1 rounded">Nav2 Active</span>
+                        <span class="text-xs bg-amber-950 border border-amber-800 text-amber-300 px-2 py-1 rounded">Dynamic Rerouting</span>
+                    </div>
+                </div>
+
+                <!-- Simulation Canvas Area for SLAM Map -->
+                <div class="relative w-full h-[380px] bg-slate-950 border border-slate-800 rounded-lg overflow-hidden flex items-center justify-center">
+                    <!-- Grid background effect -->
+                    <div class="absolute inset-0 bg-[linear-gradient(to_right,#1e293b_1px,transparent_1px),linear-gradient(to_bottom,#1e293b_1px,transparent_1px)] bg-[size:20px_20px] opacity-40"></div>
+
+                    <!-- Visual Map Placeholder Elements -->
+                    <div class="absolute text-center">
+                        <p class="text-slate-600 text-sm font-mono">[ Peta Occupancy Grid (Cartographer/SLAM Toolbox) ]</p>
+                    </div>
+
+                    <!-- Simulated Path & Rover -->
+                    <div class="absolute inset-0 p-8 flex flex-col justify-between pointer-events-none">
+                        <!-- Exit Point -->
+                        <div class="flex items-center gap-1 text-emerald-400 bg-emerald-950/80 border border-emerald-500/50 px-2 py-1 rounded w-fit text-xs">
+                            <i data-lucide="door-open" class="w-4 h-4"></i> Titik Kumpul / Exit A
+                        </div>
+
+                        <!-- Blocked Corridor Marker -->
+                        <div class="absolute top-1/2 left-1/3 flex items-center gap-1 text-red-400 bg-red-950/90 border border-red-500/50 px-2 py-1 rounded text-xs">
+                            <i data-lucide="triangle-alert" class="w-3.5 h-3.5"></i> Jalur Terblokir (Puing)
+                        </div>
+
+                        <!-- Rover Position Marker -->
+                        <div class="absolute bottom-12 right-1/3 flex flex-col items-center">
+                            <div class="w-8 h-8 bg-indigo-500/30 border-2 border-indigo-400 rounded-full flex items-center justify-center animate-pulse">
+                                <i data-lucide="navigation" class="w-4 h-4 text-indigo-300 transform rotate-45"></i>
+                            </div>
+                            <span class="bg-slate-900 border border-slate-700 text-[10px] px-1.5 py-0.5 rounded text-indigo-300 mt-1 font-mono">
+                                Rover (x:12.4, y:8.2)
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer Stats Map -->
+                <div class="mt-3 grid grid-cols-3 gap-2 text-xs">
+                    <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                        <span class="text-slate-400">Koordinat (x, y):</span>
+                        <p class="font-mono font-bold text-indigo-400">12.4m, 8.2m (45°)</p>
+                    </div>
+                    <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                        <span class="text-slate-400">Target Evakuasi:</span>
+                        <p class="font-semibold text-emerald-400">Pintu Darurat Utam (Exit A)</p>
+                    </div>
+                    <div class="bg-slate-950 p-2 rounded border border-slate-800">
+                        <span class="text-slate-400">Deteksi Rintangan:</span>
+                        <p class="font-semibold text-amber-400">1 Koridor Tertutup</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Panel 2: Telemetri Perangkat Keras -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <div class="flex items-center gap-2 mb-3">
+                    <i data-lucide="cpu" class="w-5 h-5 text-indigo-400"></i>
+                    <h2 class="font-semibold text-sm uppercase tracking-wider text-slate-200">Telemetri Kesehatan Perangkat Keras</h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <!-- Battery Health -->
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                        <div class="flex justify-between items-center text-xs mb-1">
+                            <span class="text-slate-400 flex items-center gap-1"><i data-lucide="battery-charging" class="w-3.5 h-3.5 text-emerald-400"></i> Baterai & Daya</span>
+                            <span class="font-mono text-emerald-400 font-bold">85%</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden mb-2">
+                            <div class="bg-emerald-500 h-full w-[85%]"></div>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-400 font-mono">
+                            <span>Tegangan: 12.4V</span>
+                            <span>Sisa: ~2 Jam 40 Min</span>
+                        </div>
+                    </div>
+
+                    <!-- Rover Speed -->
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800">
+                        <div class="flex justify-between items-center text-xs mb-1">
+                            <span class="text-slate-400 flex items-center gap-1"><i data-lucide="gauge" class="w-3.5 h-3.5 text-indigo-400"></i> Kecepatan Linier</span>
+                            <span class="font-mono text-indigo-400 font-bold">0.40 m/s</span>
+                        </div>
+                        <div class="w-full bg-slate-800 h-2 rounded-full overflow-hidden mb-2">
+                            <div class="bg-indigo-500 h-full w-[60%]"></div>
+                        </div>
+                        <div class="flex justify-between text-[11px] text-slate-400">
+                            <span>Batas Aman: 0.3 - 0.5 m/s</span>
+                            <span class="text-emerald-400 font-semibold">Normal</span>
+                        </div>
+                    </div>
+
+                    <!-- Sensor Diagnostic Status -->
+                    <div class="bg-slate-950 p-3 rounded-lg border border-slate-800 text-xs space-y-1">
+                        <span class="text-slate-400 block mb-1">Diagnostik Sensor Utama:</span>
+                        <div class="flex justify-between"><span>LiDAR:</span><span class="text-emerald-400 font-bold">● OK</span></div>
+                        <div class="flex justify-between"><span>IMU Sensor:</span><span class="text-emerald-400 font-bold">● OK</span></div>
+                        <div class="flex justify-between"><span>Encoder Roda:</span><span class="text-emerald-400 font-bold">● OK</span></div>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- Column 3: Visual Feed & HITL Control -->
+        <div class="space-y-6">
+
+            <!-- Panel 3: Umpan Visual Kamera & YOLO Computer Vision -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="camera" class="w-5 h-5 text-indigo-400"></i>
+                        <h2 class="font-semibold text-sm uppercase tracking-wider text-slate-200">Umpan Kamera & YOLO CV</h2>
+                    </div>
+                    <span class="text-[10px] bg-red-950 text-red-400 border border-red-800 px-2 py-0.5 rounded font-mono">LIVE /image_raw</span>
+                </div>
+
+                <!-- Video Feed Container with Simulated YOLO Bounding Box -->
+                <div class="relative w-full h-56 bg-slate-950 border border-slate-800 rounded-lg overflow-hidden flex items-center justify-center">
+                    <!-- Background Placeholder / Video Feed -->
+                    <div class="absolute inset-0 bg-slate-900 flex items-center justify-center">
+                        <p class="text-xs text-slate-600">[ Live Video Feed Pi Cam ]</p>
+                    </div>
+
+                    <!-- YOLO Bounding Box 1: Victim -->
+                    <div class="absolute top-8 left-8 w-28 h-28 border-2 border-emerald-400 bg-emerald-500/10 rounded flex flex-col justify-start">
+                        <span class="bg-emerald-500 text-slate-950 font-bold text-[9px] px-1 w-fit">Korban 92%</span>
+                    </div>
+
+                    <!-- YOLO Bounding Box 2: Obstacle -->
+                    <div class="absolute bottom-6 right-10 w-32 h-20 border-2 border-amber-400 bg-amber-500/10 rounded flex flex-col justify-start">
+                        <span class="bg-amber-400 text-slate-950 font-bold text-[9px] px-1 w-fit">Puing Hazard 88%</span>
+                    </div>
+                </div>
+
+                <!-- Deteksi Object Summary -->
+                <div class="mt-3 flex justify-between text-xs bg-slate-950 p-2 rounded border border-slate-800">
+                    <div><span class="text-slate-400">Korban:</span> <strong class="text-emerald-400">1 Orang</strong></div>
+                    <div><span class="text-slate-400">Rintangan:</span> <strong class="text-amber-400">1 Puing</strong></div>
+                    <div><span class="text-slate-400">Rambu Evakuasi:</span> <strong class="text-indigo-400">1 Exit Sign</strong></div>
+                </div>
+            </div>
+
+            <!-- Panel 4: Human in the Loop (HITL) Control Panel -->
+            <div class="bg-slate-900 border border-slate-800 rounded-xl p-4 shadow-xl">
+                <div class="flex justify-between items-center mb-3">
+                    <div class="flex items-center gap-2">
+                        <i data-lucide="gamepad-2" class="w-5 h-5 text-indigo-400"></i>
+                        <h2 class="font-semibold text-sm uppercase tracking-wider text-slate-200">Human in the Loop (HITL)</h2>
+                    </div>
+                </div>
+
+                <!-- Override Mode Switch -->
+                <div class="bg-slate-950 p-2 rounded-lg border border-slate-800 flex items-center justify-between mb-4">
+                    <span class="text-xs text-slate-300 font-medium">Pengambilalihan Manual (Manual Override)</span>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" class="sr-only peer">
+                        <div class="w-11 h-6 bg-slate-800 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-slate-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-indigo-600"></div>
+                    </label>
+                </div>
+
+                <!-- Teleoperation Control Pad -->
+                <div class="flex flex-col items-center justify-center p-3 bg-slate-950 rounded-lg border border-slate-800">
+                    <p class="text-[11px] text-slate-500 mb-2">Teleoperation Panel (WASD Key Support)</p>
+                    
+                    <div class="grid grid-cols-3 gap-2 w-36">
+                        <div></div>
+                        <button class="bg-slate-800 hover:bg-indigo-600 p-2.5 rounded flex justify-center items-center transition-all">
+                            <i data-lucide="arrow-up" class="w-4 h-4"></i>
+                        </button>
+                        <div></div>
+
+                        <button class="bg-slate-800 hover:bg-indigo-600 p-2.5 rounded flex justify-center items-center transition-all">
+                            <i data-lucide="arrow-left" class="w-4 h-4"></i>
+                        </button>
+                        <button class="bg-red-950/80 hover:bg-red-800 text-red-300 p-2.5 rounded flex justify-center items-center transition-all font-bold text-xs">
+                            STOP
+                        </button>
+                        <button class="bg-slate-800 hover:bg-indigo-600 p-2.5 rounded flex justify-center items-center transition-all">
+                            <i data-lucide="arrow-right" class="w-4 h-4"></i>
+                        </button>
+
+                        <div></div>
+                        <button class="bg-slate-800 hover:bg-indigo-600 p-2.5 rounded flex justify-center items-center transition-all">
+                            <i data-lucide="arrow-down" class="w-4 h-4"></i>
+                        </button>
+                        <div></div>
+                    </div>
+                </div>
+
+            </div>
+
+        </div>
+    </main>
+
+    <!-- Lucide Icons Initialization -->
+    <script>
+        lucide.createIcons();
+    </script>
+</body>
+</html>

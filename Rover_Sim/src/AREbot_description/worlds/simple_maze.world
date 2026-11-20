@@ -1,0 +1,85 @@
+<?xml version="1.0" ?>
+<sdf version="1.6">
+  <world name="simple_maze_world">
+
+    <physics name="1ms" type="ignored">
+      <max_step_size>0.001</max_step_size>
+      <real_time_factor>1.0</real_time_factor>
+      <real_time_update_rate>1000</real_time_update_rate>
+    </physics>
+
+    <gravity>0 0 -9.8</gravity>
+    <magnetic_field>6e-06 2.3e-05 -4.2e-05</magnetic_field>
+    <atmosphere type='adiabatic'/>
+
+    <scene>
+      <ambient>0.4 0.4 0.4 1</ambient>
+      <background>0.7 0.7 0.7 1</background>
+      <shadows>true</shadows>
+    </scene>
+
+    <light type="directional" name="sun">
+      <cast_shadows>true</cast_shadows>
+      <pose>0 0 10 0 0 0</pose>
+      <diffuse>0.8 0.8 0.8 1</diffuse>
+      <specular>0.2 0.2 0.2 1</specular>
+      <direction>-0.5 0.1 -0.9</direction>
+    </light>
+
+    <model name="ground_plane">
+      <static>true</static>
+      <link name="link">
+        <collision name="collision">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <surface><friction><ode/></friction></surface>
+        </collision>
+        <visual name="visual">
+          <geometry><plane><normal>0 0 1</normal><size>20 20</size></plane></geometry>
+          <material><ambient>0.2 0.2 0.2 1</ambient><diffuse>0.2 0.2 0.2 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+    <!-- 5x5 maze. Cell size: 1.0 m. Outer bounds: +/-2.5 m. -->
+    <!-- Start cell S is centered at (0, 0). Goal cell G is centered at (-2, 2). -->
+    <!-- The segment above S at y=0.5, x=[-0.5, 0.5] is intentionally open. -->
+
+    <model name="maze_wall_outer_north"><static>true</static><link name="link"><pose>0 2.5 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>5.0 0.1 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>5.0 0.1 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+    <model name="maze_wall_outer_south"><static>true</static><link name="link"><pose>0 -2.5 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>5.0 0.1 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>5.0 0.1 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+    <model name="maze_wall_outer_east"><static>true</static><link name="link"><pose>2.5 0 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>0.1 5.0 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>0.1 5.0 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+    <model name="maze_wall_outer_west"><static>true</static><link name="link"><pose>-2.5 0 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>0.1 5.0 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>0.1 5.0 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+
+    <model name="maze_wall_h_y1p5_xm1"><static>true</static><link name="link"><pose>-1.0 1.5 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>1.0 0.1 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>1.0 0.1 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+    <model name="maze_wall_h_y1p5_xp1"><static>true</static><link name="link"><pose>1.0 1.5 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>1.0 0.1 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>1.0 0.1 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+
+    <model name="maze_wall_h_y0p5_xp2"><static>true</static><link name="link"><pose>2.0 0.5 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>1.0 0.1 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>1.0 0.1 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+
+    <model name="maze_wall_h_ym0p5_xm2"><static>true</static><link name="link"><pose>-2.0 -0.5 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>1.0 0.1 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>1.0 0.1 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+    <model name="maze_wall_h_ym0p5_xm1"><static>true</static><link name="link"><pose>-1.0 -0.5 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>1.0 0.1 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>1.0 0.1 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+    <model name="maze_wall_h_ym0p5_xp1"><static>true</static><link name="link"><pose>1.0 -0.5 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>1.0 0.1 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>1.0 0.1 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+
+    <model name="maze_wall_h_ym1p5_xm1"><static>true</static><link name="link"><pose>-1.0 -1.5 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>1.0 0.1 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>1.0 0.1 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+    <model name="maze_wall_h_ym1p5_x0"><static>true</static><link name="link"><pose>0.0 -1.5 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>1.0 0.1 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>1.0 0.1 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+    <model name="maze_wall_h_ym1p5_xp2"><static>true</static><link name="link"><pose>2.0 -1.5 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>1.0 0.1 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>1.0 0.1 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+
+    <model name="maze_wall_v_x0p5_y2"><static>true</static><link name="link"><pose>0.5 2.0 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>0.1 1.0 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>0.1 1.0 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+    <model name="maze_wall_v_x0p5_y1"><static>true</static><link name="link"><pose>0.5 1.0 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>0.1 1.0 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>0.1 1.0 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+    <!-- <model name="maze_wall_v_x0p5_y0"><static>true</static><link name="link"><pose>0.5 0.0 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>0.1 1.0 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>0.1 1.0 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model> -->
+    <model name="maze_wall_v_x0p5_ym1"><static>true</static><link name="link"><pose>0.5 -1.0 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>0.1 1.0 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>0.1 1.0 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+
+    <model name="maze_wall_v_xm1p5_y1"><static>true</static><link name="link"><pose>-1.5 1.0 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>0.1 1.0 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>0.1 1.0 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+    <model name="maze_wall_v_xm0p5_y0"><static>true</static><link name="link"><pose>-0.5 0.0 0.2 0 0 0</pose><collision name="collision"><geometry><box><size>0.1 1.0 0.4</size></box></geometry></collision><visual name="visual"><geometry><box><size>0.1 1.0 0.4</size></box></geometry><material><ambient>0.35 0.35 0.35 1</ambient><diffuse>0.35 0.35 0.35 1</diffuse></material></visual></link></model>
+
+    <model name="goal_marker">
+      <static>true</static>
+      <link name="link">
+        <pose>-2.0 2.0 0.01 0 0 0</pose>
+        <visual name="visual">
+          <geometry><cylinder><radius>0.18</radius><length>0.02</length></cylinder></geometry>
+          <material><ambient>0.0 0.8 0.0 1</ambient><diffuse>0.0 0.8 0.0 1</diffuse></material>
+        </visual>
+      </link>
+    </model>
+
+  </world>
+</sdf>

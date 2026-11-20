@@ -1,0 +1,28 @@
+esp32_bridge:
+  ros__parameters:
+    # Serial device (CP2102 default). Auto-detect scans for the VID:PID below
+    # if this path does not exist.
+    port: /dev/ttyUSB0
+    baud: 115200
+    auto_detect: false
+    device_vid_pid: ["10c4:ea60"]   # CP2102 USB-serial
+    reconnect_interval: 2.0
+    data_timeout: 5.0
+
+    # ROS topics
+    cmd_vel_topic: /cmd_vel
+    telemetry_topic: /wheel_telemetry
+
+    # Robot geometry (must match wheel_odometry.yaml so cmd_vel, odom and the
+    # physical wheel track use the same model)
+    wheel_radius: 0.0335
+    wheel_separation: 0.20
+    max_rpm: 95.0
+    invert_left: false
+    invert_right: false
+    # ESP32 Motor A / encoder A is the RIGHT wheel (Motor B is left).
+    motor_a_is_right: true
+
+    # Safety / timing
+    cmd_timeout: 0.5
+    serial_poll_hz: 100.0

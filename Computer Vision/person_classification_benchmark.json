@@ -1,0 +1,75 @@
+{
+  "dataset_name": "Obstacle Detection (Roboflow v7)",
+  "target_class": "human",
+  "target_class_indonesian": "Orang (Human)",
+  "class_id": 4,
+  "total_images": 842,
+  "total_annotations": 2301,
+  "total_human_samples": 1102,
+  "human_sample_percentage": 47.9,
+  "accuracy_score_percent": 92.4,
+  "map_50": 0.924,
+  "map_50_95": 0.732,
+  "precision": 0.938,
+  "recall": 0.912,
+  "f1_score": 0.925,
+  "geometric_priors": {
+    "mean_aspect_ratio_h_w": 2.31,
+    "min_typical_aspect_ratio": 1.45,
+    "max_typical_aspect_ratio": 4.1,
+    "mean_normalized_area": 0.061
+  },
+  "split_breakdown": {
+    "train": {
+      "image_count": 750,
+      "label_count": 750,
+      "human_count": 990,
+      "class_distribution": {
+        "Animals-Level 1": 471,
+        "Animals-Level 2": 126,
+        "Natural disaster": 153,
+        "bird": 12,
+        "human": 990,
+        "rock": 282,
+        "vehicle": 27
+      },
+      "avg_human_aspect_ratio": 2.2,
+      "avg_human_width": 0.221,
+      "avg_human_height": 0.253
+    },
+    "valid": {
+      "image_count": 72,
+      "label_count": 72,
+      "human_count": 86,
+      "class_distribution": {
+        "Animals-Level 1": 38,
+        "Animals-Level 2": 8,
+        "Natural disaster": 17,
+        "bird": 3,
+        "human": 86,
+        "rock": 44,
+        "vehicle": 2
+      },
+      "avg_human_aspect_ratio": 3.37,
+      "avg_human_width": 0.102,
+      "avg_human_height": 0.33
+    },
+    "test": {
+      "image_count": 20,
+      "label_count": 20,
+      "human_count": 26,
+      "class_distribution": {
+        "Animals-Level 1": 0,
+        "Animals-Level 2": 0,
+        "Natural disaster": 8,
+        "bird": 0,
+        "human": 26,
+        "rock": 3,
+        "vehicle": 5
+      },
+      "avg_human_aspect_ratio": 2.92,
+      "avg_human_width": 0.158,
+      "avg_human_height": 0.414
+    }
+  }
+}

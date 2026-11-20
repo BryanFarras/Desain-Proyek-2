@@ -1,0 +1,467 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>AeroDashboard Drone-01</title>
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@latest/tabler-icons.min.css">
+  <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+  <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    
+    :root {
+      --bg-main: #0B1116;
+      --bg-header: #121A21;
+      --bg-panel: #101820;
+      --text-main: #E2E8F0;
+      --text-muted: #64748B;
+      --text-green: #38b259;
+      --text-yellow: #FACC15;
+      --accent-blue: #0ea5e9;
+      --border-color: #273746;
+    }
+
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+
+    body {
+      font-family: 'Inter', sans-serif;
+      background-color: var(--bg-main);
+      color: var(--text-main);
+      display: flex;
+      flex-direction: column;
+      height: 100vh;
+      overflow: hidden;
+    }
+
+    .header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 12px 24px;
+      background-color: var(--bg-header);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .header-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .logo-icon {
+      color: var(--accent-blue);
+      font-size: 24px;
+    }
+
+    .brand-name {
+      font-weight: 700;
+      font-size: 16px;
+    }
+
+    .drone-id {
+      color: var(--text-muted);
+      font-size: 13px;
+      margin-left: 4px;
+    }
+
+    .header-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-size: 13px;
+    }
+
+    .status-dot {
+      width: 8px;
+      height: 8px;
+      background-color: var(--text-green);
+      border-radius: 50%;
+      box-shadow: 0 0 6px var(--text-green);
+    }
+
+    .status-text {
+      color: var(--text-main);
+    }
+
+    .settings-btn {
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 20px;
+      margin-left: 12px;
+    }
+
+    .main-content {
+      display: flex;
+      flex: 1;
+      padding: 24px;
+      gap: 32px;
+    }
+
+    .left-panel {
+      width: 300px;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .section-title {
+      font-size: 15px;
+      font-weight: 600;
+      margin-bottom: 16px;
+    }
+
+    .progress-info {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-bottom: 8px;
+    }
+
+    .progress-bar-bg {
+      width: 100%;
+      height: 2px;
+      background-color: var(--border-color);
+      margin-bottom: 24px;
+    }
+
+    .progress-bar-fill {
+      width: 60%;
+      height: 100%;
+      background-color: var(--text-green);
+    }
+
+    .checklist {
+      display: flex;
+      flex-direction: column;
+      gap: 18px;
+      flex: 1;
+    }
+
+    .check-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: 13px;
+      font-weight: 500;
+    }
+
+    .check-left {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .check-icon {
+      font-size: 18px;
+    }
+
+    .check-icon.done {
+      color: var(--text-green);
+    }
+
+    .check-icon.pending {
+      color: var(--text-muted);
+    }
+
+    .check-right {
+      font-size: 12px;
+    }
+
+    .text-green { color: var(--text-green); }
+    .text-yellow { color: var(--text-yellow); }
+    .text-gray { color: var(--text-muted); }
+
+    .btn-primary {
+      background-color: #1A2632;
+      border: 1px solid var(--border-color);
+      color: var(--text-muted);
+      padding: 12px;
+      border-radius: 6px;
+      font-weight: 600;
+      cursor: pointer;
+      width: 100%;
+      margin-top: auto;
+      transition: all 0.2s;
+    }
+
+    .btn-primary:hover {
+      background-color: #243442;
+      color: var(--text-main);
+    }
+
+    .right-panel {
+      flex: 1;
+      display: flex;
+      flex-direction: column;
+      min-width: 0;
+    }
+
+    .map-container {
+      flex: 1;
+      background-color: #0A0F14;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      position: relative;
+      overflow: hidden;
+      margin-bottom: 16px;
+      min-height: 200px;
+    }
+
+    #map {
+      width: 100%;
+      height: 100%;
+    }
+
+    /* Custom Leaflet WP Icon */
+    .custom-wp-icon div {
+      width: 24px;
+      height: 24px;
+      background-color: var(--accent-blue);
+      border-radius: 50%;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      color: white;
+      font-size: 12px;
+      font-weight: bold;
+      border: 2px solid white;
+    }
+
+    .controls-row {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 16px;
+      align-items: center;
+      flex-wrap: wrap;
+    }
+
+    .btn-control {
+      background-color: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      padding: 8px 14px;
+      border-radius: 16px;
+      font-size: 12px;
+      font-weight: 500;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .btn-control:hover {
+      background-color: rgba(255, 255, 255, 0.05);
+    }
+
+    .select-group {
+      display: flex;
+      align-items: center;
+      margin-left: auto;
+      gap: 16px;
+    }
+
+    .select-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 13px;
+    }
+    
+    .select-control select {
+      background: transparent;
+      border: 1px solid var(--border-color);
+      color: var(--text-main);
+      outline: none;
+      font-family: inherit;
+      padding: 6px 10px;
+      border-radius: 4px;
+    }
+
+    .select-control select option {
+      background: var(--bg-main);
+      color: var(--text-main);
+    }
+
+    .select-label {
+      color: var(--text-muted);
+    }
+
+    .btn-ai {
+      background-color: transparent;
+      border: 1px solid var(--accent-blue);
+      color: var(--accent-blue);
+      padding: 12px;
+      border-radius: 8px;
+      font-weight: 600;
+      font-size: 14px;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      gap: 8px;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+
+    .btn-ai:hover {
+      background-color: rgba(14, 165, 233, 0.1);
+    }
+  </style>
+</head>
+<body>
+
+  <header class="header">
+    <div class="header-left">
+      <i class="ti ti-layers-intersect logo-icon"></i>
+      <span class="brand-name">AeroDashboard</span>
+      <span class="drone-id">Drone-01</span>
+    </div>
+    <div class="header-right">
+      <div class="status-dot"></div>
+      <span class="status-text">Terhubung</span>
+      <i class="ti ti-settings settings-btn"></i>
+    </div>
+  </header>
+
+  <main class="main-content">
+    <aside class="left-panel">
+      <h2 class="section-title">Pre-Flight Checklist</h2>
+      <div class="progress-info">3/5 Selesai</div>
+      <div class="progress-bar-bg">
+        <div class="progress-bar-fill"></div>
+      </div>
+
+      <div class="checklist">
+        <div class="check-item">
+          <div class="check-left">
+            <i class="ti ti-circle-check-filled check-icon done"></i>
+            <span>GPS Lock</span>
+          </div>
+          <span class="check-right text-green" style="color: #6ee7b7">12 satellites</span>
+        </div>
+
+        <div class="check-item">
+          <div class="check-left">
+            <i class="ti ti-circle-check-filled check-icon done"></i>
+            <span>Compass</span>
+          </div>
+          <span class="check-right text-green">Terkalibrasi</span>
+        </div>
+
+        <div class="check-item">
+          <div class="check-left">
+            <i class="ti ti-circle-check-filled check-icon done"></i>
+            <span>Baterai</span>
+          </div>
+          <span class="check-right text-green" style="color: #6ee7b7">4 sel (16.8V)</span>
+        </div>
+
+        <div class="check-item">
+          <div class="check-left">
+            <i class="ti ti-circle-check-filled check-icon done"></i>
+            <span>Radio Telemetri</span>
+          </div>
+          <span class="check-right text-green">Terhubung</span>
+        </div>
+
+        <div class="check-item">
+          <div class="check-left">
+            <i class="ti ti-circle check-icon pending"></i>
+            <span>Cuaca</span>
+          </div>
+          <span class="check-right text-yellow">Cerah, angin 15 km/jam</span>
+        </div>
+      </div>
+
+      <button class="btn-primary">Mulai Misi</button>
+    </aside>
+
+    <section class="right-panel">
+      <h2 class="section-title">Perencana Misi</h2>
+      
+      <div class="map-container">
+        <div id="map"></div>
+      </div>
+
+      <div class="controls-row">
+        <button class="btn-control">Tambah WP</button>
+        <button class="btn-control">Hapus Terpilih</button>
+        <button class="btn-control">Hapus Semua</button>
+        <button class="btn-control">Urungkan</button>
+        <button class="btn-control">Ulangi</button>
+        
+        <div class="select-group">
+          <div class="select-control">
+            <span class="select-label">Altitude:</span>
+            <select>
+              <option>50m</option>
+              <option>100m</option>
+              <option>150m</option>
+            </select>
+          </div>
+          
+          <div class="select-control">
+            <span class="select-label">Kecepatan:</span>
+            <select>
+              <option>15 m/s</option>
+              <option>20 m/s</option>
+              <option>25 m/s</option>
+            </select>
+          </div>
+        </div>
+      </div>
+
+      <button class="btn-ai">
+        <i class="ti ti-cloud-computing"></i> Minta Saran Rute AI
+      </button>
+    </section>
+  </main>
+
+  <script>
+    // Initialize map
+    var map = L.map('map', { 
+      zoomControl: false,
+      attributionControl: true
+    }).setView([-6.200000, 106.816666], 13);
+    
+    // Add dark matter tile layer
+    L.tileLayer('https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png', {
+      attribution: '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors &copy; <a href="https://carto.com/attributions">CARTO</a>',
+      subdomains: 'abcd',
+      maxZoom: 20
+    }).addTo(map);
+
+    // Add waypoints
+    var latlngs = [
+      [-6.225, 106.800], // A
+      [-6.215, 106.810], // B
+      [-6.200, 106.820], // C
+      [-6.185, 106.830], // D
+      [-6.170, 106.840]  // E
+    ];
+    
+    // Draw path
+    var polyline = L.polyline(latlngs, {
+      color: '#0ea5e9', 
+      dashArray: '8, 8', 
+      weight: 3
+    }).addTo(map);
+
+    // Add custom markers
+    var labels = ['A', 'B', 'C', 'D', 'E'];
+    latlngs.forEach(function(latlng, index) {
+      var icon = L.divIcon({
+        className: 'custom-wp-icon',
+        html: '<div>' + labels[index] + '</div>',
+        iconSize: [24, 24],
+        iconAnchor: [12, 12]
+      });
+      L.marker(latlng, {icon: icon}).addTo(map);
+    });
+    
+    // Fit bounds to path with some padding
+    map.fitBounds(polyline.getBounds(), {padding: [50, 50]});
+  </script>
+</body>
+</html>

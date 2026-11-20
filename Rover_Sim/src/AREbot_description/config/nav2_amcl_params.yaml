@@ -1,0 +1,18 @@
+amcl:
+  ros__parameters:
+    use_sim_time: true
+    global_frame_id: map
+    odom_frame_id: odom
+    base_frame_id: base_footprint
+    scan_topic: scan
+    robot_model_type: "nav2_amcl::DifferentialMotionModel"
+    laser_model_type: likelihood_field
+    laser_min_range: 0.1
+    laser_max_range: 10.0
+    # Update on (almost) any motion. While stationary, run_amcl.py forces
+    # updates via the request_nomotion_update service.
+    update_min_d: 0.02
+    update_min_a: 0.02
+    # map->odom is stamped scan_stamp + tolerance, so a large value makes the
+    # correction lag behind by that much (default 1.0)
+    transform_tolerance: 0.2
